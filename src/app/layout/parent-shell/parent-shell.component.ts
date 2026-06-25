@@ -1,16 +1,9 @@
-import { Component, inject, computed } from '@angular/core';
+import { Component, inject, computed, OnInit } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
+import { NotificationService } from '../../core/services/notification.service';
 import { AvatarComponent } from '../../shared/components/avatar/avatar.component';
-
-const NAV = [
-  { path: '/parent/dashboard',     icon: '⊞', label: 'Dashboard' },
-  { path: '/parent/progress',      icon: '📈', label: 'My Child' },
-  { path: '/parent/messages',      icon: '💬', label: 'Messages' },
-  { path: '/parent/loyalty',       icon: '⭐', label: 'Loyalty Points' },
-  { path: '/parent/notifications', icon: '🔔', label: 'Notifications' },
-];
 
 @Component({
   selector: 'app-parent-shell',
@@ -21,18 +14,35 @@ const NAV = [
       <aside class="sidebar">
         <div class="sidebar__logo">🥋 <span>Parent Portal</span></div>
         <nav class="sidebar__nav">
-          <a *ngFor="let item of nav"
-             [routerLink]="item.path"
-             routerLinkActive="active"
-             class="nav-item">
-            <span class="nav-icon">{{ item.icon }}</span>
-            {{ item.label }}
+          <a routerLink="/parent/dashboard"     routerLinkActive="active" class="nav-item">
+            <span class="nav-icon">⊞</span> Dashboard
+          </a>
+          <a routerLink="/parent/progress"      routerLinkActive="active" class="nav-item">
+            <span class="nav-icon">📈</span> My Child
+          </a>
+          <a routerLink="/parent/messages"      routerLinkActive="active" class="nav-item">
+            <span class="nav-icon">💬</span> Messages
+            <span *ngIf="unreadMessages() > 0" class="nav-badge">{{ unreadMessages() }}</span>
+          </a>
+          <a routerLink="/parent/loyalty"       routerLinkActive="active" class="nav-item">
+            <span class="nav-icon">⭐</span> Loyalty Points
+          </a>
+          <a routerLink="/parent/notifications" routerLinkActive="active" class="nav-item">
+            <span class="nav-icon">🔔</span> Notifications
+            <span *ngIf="unreadNotifs() > 0" class="nav-badge">{{ unreadNotifs() }}</span>
           </a>
         </nav>
         <div class="sidebar__footer">
-          <div class="nav-item" (click)="auth.logout()">
-            <span class="nav-icon">🚪</span> Sign out
+          <div class="sidebar-user">
+            <dojo-avatar [name]="user()?.displayName || 'P'" size="sm"></dojo-avatar>
+            <div style="flex:1;min-width:0;overflow:hidden">
+              <div class="sidebar-user-name">{{ user()?.displayName }}</div>
+              <div class="sidebar-user-role">Parent</div>
+            </div>
           </div>
+          <button class="sidebar-logout" (click)="auth.logout()">
+            <span>🚪</span><span>Sign out</span>
+          </button>
         </div>
       </aside>
       <div class="main">
@@ -47,8 +57,22 @@ const NAV = [
     </div>
   `
 })
-export class ParentShellComponent {
+export class ParentShellComponent implements OnInit {
   auth = inject(AuthService);
-  user = computed(() => this.auth.currentUser());
-  nav  = NAV;
+  private ns = inject(NotificationService);
+
+  user           = computed(() => this.auth.currentUser());
+  unreadNotifs   = computed(() => 0);
+  unreadMessages = computed(() => 0);
+
+  private _unreadNotifs   = 0;
+  private _unreadMessages = 0;
+
+  ngOnInit() {
+    const uid = this.auth.currentUser()?.uid;
+    if (!uid) return;
+    this.ns.forUser$(uid).subscribe(notifs => {
+      this._unreadNotifs = notifs.filter(n => !n.isRead).length;
+    });
+  }
 }

@@ -57,6 +57,7 @@ export const routes: Routes = [
       { path: 'progress/:id',    loadComponent: () => import('./features/parent/child-progress/child-progress.component').then(m => m.ChildProgressComponent) },
       { path: 'messages',        loadComponent: () => import('./features/parent/messages/parent-messages.component').then(m => m.ParentMessagesComponent) },
       { path: 'loyalty',         loadComponent: () => import('./features/parent/loyalty/loyalty.component').then(m => m.LoyaltyComponent) },
+      { path: 'notifications',   loadComponent: () => import('./features/parent/notifications/notifications.component').then(m => m.NotificationsComponent) },
     ]
   },
 
