@@ -1,0 +1,10 @@
+{
+  "indexes": [
+    { "collectionGroup": "students",   "fields": [{"fieldPath":"parentUid","order":"ASCENDING"},{"fieldPath":"isActive","order":"ASCENDING"}] },
+    { "collectionGroup": "sessions",   "fields": [{"fieldPath":"coachUid","order":"ASCENDING"},{"fieldPath":"date","order":"DESCENDING"}] },
+    { "collectionGroup": "attendance", "fields": [{"fieldPath":"studentId","order":"ASCENDING"},{"fieldPath":"markedAt","order":"DESCENDING"}] },
+    { "collectionGroup": "threads",    "fields": [{"fieldPath":"coachUid","order":"ASCENDING"},{"fieldPath":"lastAt","order":"DESCENDING"}] },
+    { "collectionGroup": "threads",    "fields": [{"fieldPath":"parentUid","order":"ASCENDING"},{"fieldPath":"lastAt","order":"DESCENDING"}] }
+  ],
+  "fieldOverrides": []
+}

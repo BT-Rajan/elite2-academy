@@ -1,0 +1,64 @@
+import { Routes } from '@angular/router';
+import { authGuard, roleGuard } from './core/guards/auth.guard';
+
+export const routes: Routes = [
+  { path: '', redirectTo: 'auth/login', pathMatch: 'full' },
+
+  // ── Auth ──────────────────────────────────────────────────────────────────
+  {
+    path: 'auth',
+    children: [
+      { path: 'login',  loadComponent: () => import('./features/auth/login/login.component').then(m => m.LoginComponent) },
+      { path: 'signup', loadComponent: () => import('./features/auth/signup/signup.component').then(m => m.SignupComponent) },
+      { path: 'reset',  loadComponent: () => import('./features/auth/reset-password/reset-password.component').then(m => m.ResetPasswordComponent) },
+    ]
+  },
+
+  // ── Admin ─────────────────────────────────────────────────────────────────
+  {
+    path: 'admin',
+    canActivate: [roleGuard('admin')],
+    loadComponent: () => import('./layout/admin-shell/admin-shell.component').then(m => m.AdminShellComponent),
+    children: [
+      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+      { path: 'dashboard',   loadComponent: () => import('./features/admin/dashboard/admin-dashboard.component').then(m => m.AdminDashboardComponent) },
+      { path: 'staff',       loadComponent: () => import('./features/admin/staff/staff.component').then(m => m.StaffComponent) },
+      { path: 'disciplines', loadComponent: () => import('./features/admin/disciplines/disciplines.component').then(m => m.DisciplinesComponent) },
+      { path: 'reports',     loadComponent: () => import('./features/admin/reports/reports.component').then(m => m.ReportsComponent) },
+      { path: 'settings',    loadComponent: () => import('./features/admin/settings/admin-settings.component').then(m => m.AdminSettingsComponent) },
+    ]
+  },
+
+  // ── Coach ─────────────────────────────────────────────────────────────────
+  {
+    path: 'coach',
+    canActivate: [roleGuard('coach', 'admin')],
+    loadComponent: () => import('./layout/coach-shell/coach-shell.component').then(m => m.CoachShellComponent),
+    children: [
+      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+      { path: 'dashboard',     loadComponent: () => import('./features/coach/dashboard/coach-dashboard.component').then(m => m.CoachDashboardComponent) },
+      { path: 'attendance',    loadComponent: () => import('./features/coach/attendance/attendance.component').then(m => m.AttendanceComponent) },
+      { path: 'attendance/:id',loadComponent: () => import('./features/coach/attendance/attendance.component').then(m => m.AttendanceComponent) },
+      { path: 'students',      loadComponent: () => import('./features/coach/student-detail/student-list.component').then(m => m.StudentListComponent) },
+      { path: 'students/:id',  loadComponent: () => import('./features/coach/student-detail/student-detail.component').then(m => m.StudentDetailComponent) },
+      { path: 'messages',      loadComponent: () => import('./features/coach/messages/coach-messages.component').then(m => m.CoachMessagesComponent) },
+    ]
+  },
+
+  // ── Parent ────────────────────────────────────────────────────────────────
+  {
+    path: 'parent',
+    canActivate: [roleGuard('parent')],
+    loadComponent: () => import('./layout/parent-shell/parent-shell.component').then(m => m.ParentShellComponent),
+    children: [
+      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+      { path: 'dashboard',       loadComponent: () => import('./features/parent/dashboard/parent-dashboard.component').then(m => m.ParentDashboardComponent) },
+      { path: 'progress',        loadComponent: () => import('./features/parent/child-progress/child-progress.component').then(m => m.ChildProgressComponent) },
+      { path: 'progress/:id',    loadComponent: () => import('./features/parent/child-progress/child-progress.component').then(m => m.ChildProgressComponent) },
+      { path: 'messages',        loadComponent: () => import('./features/parent/messages/parent-messages.component').then(m => m.ParentMessagesComponent) },
+      { path: 'loyalty',         loadComponent: () => import('./features/parent/loyalty/loyalty.component').then(m => m.LoyaltyComponent) },
+    ]
+  },
+
+  { path: '**', redirectTo: 'auth/login' }
+];

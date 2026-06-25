@@ -1,0 +1,75 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ─────────────────────────────────────────────
+    function isAuth()        { return request.auth != null; }
+    function uid()           { return request.auth.uid; }
+    function role()          { return get(/databases/$(database)/documents/users/$(uid())).data.role; }
+    function isAdmin()       { return role() == 'admin'; }
+    function isCoach()       { return role() == 'coach' || isAdmin(); }
+    function isParent()      { return role() == 'parent'; }
+    function ownsDojo(dojoId){ return get(/databases/$(database)/documents/users/$(uid())).data.dojoId == dojoId; }
+
+    // ── Users ────────────────────────────────────────────────
+    match /users/{userId} {
+      allow read:   if isAuth() && (uid() == userId || isCoach());
+      allow create: if isAuth() && uid() == userId;
+      allow update: if isAuth() && (uid() == userId || isAdmin());
+    }
+
+    // ── Students ─────────────────────────────────────────────
+    match /students/{studentId} {
+      allow read:   if isAuth() && (isCoach() || resource.data.parentUid == uid());
+      allow create: if isAdmin();
+      allow update: if isAdmin() || isCoach();
+    }
+
+    // ── Sessions ─────────────────────────────────────────────
+    match /sessions/{sessionId} {
+      allow read:   if isCoach() || isParent();
+      allow create, update: if isCoach();
+
+      match /comments/{commentId} {
+        allow read:   if isAuth();
+        allow create: if isCoach();
+        allow update: if isCoach() && resource.data.coachUid == uid();
+      }
+    }
+
+    // ── Attendance ───────────────────────────────────────────
+    match /attendance/{recordId} {
+      allow read:   if isAuth();
+      allow create, update: if isCoach();
+    }
+
+    // ── Threads & Messages ───────────────────────────────────
+    match /threads/{threadId} {
+      allow read:   if isAuth() && (resource.data.coachUid == uid() || resource.data.parentUid == uid());
+      allow create: if isCoach();
+      allow update: if resource.data.coachUid == uid() || resource.data.parentUid == uid();
+
+      match /messages/{msgId} {
+        allow read:   if isAuth() && (get(/databases/$(database)/documents/threads/$(threadId)).data.coachUid == uid()
+                          || get(/databases/$(database)/documents/threads/$(threadId)).data.parentUid == uid());
+        allow create: if isAuth();
+      }
+    }
+
+    // ── Loyalty ──────────────────────────────────────────────
+    match /loyalty/{parentId} {
+      allow read:   if isAuth() && (uid() == parentId || isCoach());
+      allow write:  if isCoach();
+
+      match /transactions/{txId} {
+        allow read:  if isAuth() && (uid() == parentId || isCoach());
+        allow write: if isCoach();
+      }
+    }
+
+    match /loyalty_rewards/{rewardId} {
+      allow read:  if isAuth();
+      allow write: if isAdmin();
+    }
+  }
+}
