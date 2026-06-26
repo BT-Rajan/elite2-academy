@@ -1,52 +1,172 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, AsyncPipe, DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { StudentService } from '../../../core/services/student.service';
+import { Observable, combineLatest } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
+import { StudentService } from '../../../core/services/student.service';
+import { UserService } from '../../../core/services/user.service';
+import { SessionService } from '../../../core/services/session.service';
+import { Student, UserProfile, ClassSession } from '../../../core/models';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { StatCardComponent } from '../../../shared/components/stat-card/stat-card.component';
-import { LoadingComponent } from '../../../shared/components/loading/loading.component';
+import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
+import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, PageHeaderComponent, StatCardComponent, LoadingComponent],
+  imports: [CommonModule, AsyncPipe, DatePipe, RouterLink,
+            PageHeaderComponent, StatCardComponent, AvatarComponent, EmptyStateComponent],
   template: `
-    <dojo-page-header title="Admin Dashboard" subtitle="Business overview"></dojo-page-header>
+    <dojo-page-header
+      [title]="greeting()"
+      subtitle="Business overview">
+    </dojo-page-header>
 
+    <!-- Stats -->
     <div class="stat-grid stat-grid--4 mb-6">
       <dojo-stat-card icon="🧒" [value]="stats().students" label="Active Students"></dojo-stat-card>
       <dojo-stat-card icon="👥" [value]="stats().coaches"  label="Coaches"></dojo-stat-card>
-      <dojo-stat-card icon="📅" [value]="stats().sessions" label="Sessions this week"></dojo-stat-card>
-      <dojo-stat-card icon="⭐" [value]="stats().points"   label="Points awarded today"></dojo-stat-card>
+      <dojo-stat-card icon="📅" [value]="stats().sessions" label="Open Sessions"></dojo-stat-card>
+      <dojo-stat-card icon="🆔" [value]="dojoId()" label="Dojo ID" sub="Share with new members"></dojo-stat-card>
     </div>
 
     <div class="form-grid form-grid--2">
+      <!-- Recent students -->
+      <div class="card">
+        <div class="card__header">
+          <span class="card__title">Recent Students</span>
+          <a routerLink="/admin/staff" class="btn btn--ghost btn--sm">View all</a>
+        </div>
+        <div *ngIf="students$ | async as students">
+          <dojo-empty-state *ngIf="students.length === 0"
+            icon="🧒" title="No students yet" subtitle="Parents enrol children after signing up.">
+          </dojo-empty-state>
+          <div *ngFor="let s of students | slice:0:5"
+            style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border)">
+            <dojo-avatar [name]="s.firstName + ' ' + s.lastName" size="sm"></dojo-avatar>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:600">{{ s.firstName }} {{ s.lastName }}</div>
+              <div class="text-muted text-sm">{{ s.disciplineId }}</div>
+            </div>
+            <span class="badge badge--accent" style="font-size:11px">{{ s.currentBeltId || 'No belt' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick actions -->
       <div class="card">
         <div class="card__header"><span class="card__title">Quick Actions</span></div>
         <div class="card__body" style="display:flex;flex-direction:column;gap:8px">
-          <a routerLink="/admin/staff"      class="btn btn--secondary btn--full">👥 Manage Staff</a>
-          <a routerLink="/admin/students"   class="btn btn--secondary btn--full">🧒 View Students</a>
-          <a routerLink="/admin/disciplines"class="btn btn--secondary btn--full">🥋 Disciplines & Belts</a>
-          <a routerLink="/admin/reports"    class="btn btn--secondary btn--full">📊 Reports</a>
-          <a routerLink="/admin/settings"   class="btn btn--secondary btn--full">⚙ Settings</a>
+          <a routerLink="/admin/staff"       class="btn btn--secondary btn--full" style="justify-content:flex-start">
+            👥 &nbsp; Manage Staff & Parents
+          </a>
+          <a routerLink="/admin/disciplines" class="btn btn--secondary btn--full" style="justify-content:flex-start">
+            🥋 &nbsp; Disciplines & Belts
+          </a>
+          <a routerLink="/admin/reports"     class="btn btn--secondary btn--full" style="justify-content:flex-start">
+            📊 &nbsp; Reports & Analytics
+          </a>
+          <a routerLink="/admin/settings"    class="btn btn--secondary btn--full" style="justify-content:flex-start">
+            ⚙ &nbsp; Platform Settings
+          </a>
+          <a routerLink="/coach/dashboard"   class="btn btn--secondary btn--full" style="justify-content:flex-start">
+            🔄 &nbsp; Switch to Coach View
+          </a>
         </div>
       </div>
+
+      <!-- Recent sessions -->
       <div class="card">
-        <div class="card__header"><span class="card__title">Getting Started</span></div>
-        <div class="card__body">
-          <ol style="padding-left:18px;color:var(--text-muted);font-size:14px;line-height:2">
-            <li>Add your disciplines and belt levels</li>
-            <li>Create coach accounts</li>
-            <li>Have parents register and add children</li>
-            <li>Configure the loyalty program</li>
-            <li>Set up your class schedule</li>
-          </ol>
+        <div class="card__header">
+          <span class="card__title">Recent Sessions</span>
+          <a routerLink="/coach/attendance" class="btn btn--primary btn--sm">+ New</a>
+        </div>
+        <div *ngIf="sessions$ | async as sessions">
+          <dojo-empty-state *ngIf="sessions.length === 0"
+            icon="📅" title="No sessions" subtitle="Sessions appear here as coaches take attendance.">
+          </dojo-empty-state>
+          <table *ngIf="sessions.length > 0">
+            <thead><tr><th>Class</th><th>Date</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let s of sessions | slice:0:5">
+                <td><strong>{{ s.className }}</strong></td>
+                <td class="text-muted">{{ s.date | date:'MMM d' }}</td>
+                <td>
+                  <span class="badge" [class]="s.isClosed ? 'badge--gray' : 'badge--success'">
+                    {{ s.isClosed ? 'Closed' : 'Open' }}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Getting started checklist -->
+      <div class="card">
+        <div class="card__header"><span class="card__title">Setup Checklist</span></div>
+        <div class="card__body" style="padding:0">
+          <div *ngFor="let step of setupSteps"
+            style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border)">
+            <div style="width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0"
+              [style.background]="step.done ? 'var(--success)' : 'var(--surface-2)'"
+              [style.color]="step.done ? '#fff' : 'var(--text-muted)'">
+              {{ step.done ? '✓' : step.num }}
+            </div>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:500"
+                [style.text-decoration]="step.done ? 'line-through' : 'none'"
+                [style.color]="step.done ? 'var(--text-muted)' : 'var(--text)'">
+                {{ step.label }}
+              </div>
+            </div>
+            <a *ngIf="!step.done" [routerLink]="step.link" class="btn btn--ghost btn--sm">Go →</a>
+          </div>
         </div>
       </div>
     </div>
   `
 })
-export class AdminDashboardComponent {
-  stats = signal({ students: 0, coaches: 0, sessions: 0, points: 0 });
+export class AdminDashboardComponent implements OnInit {
+  auth = inject(AuthService);
+  private sts  = inject(StudentService);
+  private us   = inject(UserService);
+  private ss   = inject(SessionService);
+
+  students$!: Observable<Student[]>;
+  coaches$!:  Observable<UserProfile[]>;
+  sessions$!: Observable<ClassSession[]>;
+
+  stats  = signal({ students: 0, coaches: 0, sessions: 0 });
+  dojoId  = () => this.auth.currentUser()?.dojoId ?? '—';
+  greeting = () => 'Welcome, ' + (this.auth.currentUser()?.displayName?.split(' ')[0] ?? 'Admin');
+
+  setupSteps = [
+    { num: '1', label: 'Add disciplines and belt levels', link: '/admin/disciplines', done: false },
+    { num: '2', label: 'Invite coaches to the platform',  link: '/admin/staff',       done: false },
+    { num: '3', label: 'Configure loyalty rewards',       link: '/admin/settings',    done: false },
+    { num: '4', label: 'Share Dojo ID with parents',      link: '/admin/settings',    done: false },
+    { num: '5', label: 'Take first attendance session',   link: '/coach/attendance',  done: false },
+  ];
+
+  ngOnInit() {
+    const dojoId = this.auth.currentUser()!.dojoId;
+    this.students$ = this.sts.byDojo$(dojoId);
+    this.coaches$  = this.us.coaches$(dojoId);
+    this.sessions$ = this.ss.byDojo$(dojoId);
+
+    this.students$.subscribe(s => {
+      this.stats.update(v => ({ ...v, students: s.length }));
+      this.setupSteps[3].done = s.length > 0;
+    });
+    this.coaches$.subscribe(c => {
+      this.stats.update(v => ({ ...v, coaches: c.length }));
+      this.setupSteps[1].done = c.length > 0;
+    });
+    this.sessions$.subscribe(s => {
+      this.stats.update(v => ({ ...v, sessions: s.filter(x => !x.isClosed).length }));
+      this.setupSteps[4].done = s.length > 0;
+    });
+  }
 }
