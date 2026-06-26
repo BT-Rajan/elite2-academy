@@ -61,5 +61,19 @@ export const routes: Routes = [
     ]
   },
 
+  // ── Public website ───────────────────────────────────────────────────────
+  {
+    path: 'public',
+    loadComponent: () => import('./layout/public-shell/public-shell.component').then(m => m.PublicShellComponent),
+    children: [
+      { path: '',         loadComponent: () => import('./features/public/home/home.component').then(m => m.HomeComponent) },
+      { path: 'schedule', loadComponent: () => import('./features/public/schedule/schedule.component').then(m => m.PublicScheduleComponent) },
+      { path: 'pricing',  loadComponent: () => import('./features/public/pricing/pricing.component').then(m => m.PricingComponent) },
+    ]
+  },
+
+  // Redirect bare root to public home
+  { path: '', redirectTo: 'public', pathMatch: 'full' },
+
   { path: '**', redirectTo: 'auth/login' }
 ];

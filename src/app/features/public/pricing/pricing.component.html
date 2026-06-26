@@ -1,0 +1,82 @@
+<!-- Header -->
+<div class="pricing-hero">
+  <div class="pricing-hero-inner">
+    <div class="section-tag">Pricing</div>
+    <h1 class="pricing-title">Simple, transparent pricing</h1>
+    <p class="pricing-sub">One flat fee per family. No per-student charges. No hidden fees.</p>
+    <div class="billing-toggle">
+      <button class="toggle-btn" [class.active]="!annual()" (click)="annual.set(false)">Monthly</button>
+      <button class="toggle-btn" [class.active]="annual()" (click)="annual.set(true)">
+        Annual <span class="save-badge">Save 20%</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Plans -->
+<div class="pricing-body">
+  <div class="plans-grid">
+    <div *ngFor="let plan of plans" class="plan-card" [class.plan-card--highlight]="plan.highlighted">
+      <div *ngIf="plan.badge" class="plan-badge">{{ plan.badge }}</div>
+      <div class="plan-header">
+        <div class="plan-name" [style.color]="plan.color">{{ plan.name }}</div>
+        <div class="plan-price-row">
+          <span class="plan-currency">$</span>
+          <span class="plan-amount">{{ discountedPrice(plan) }}</span>
+          <span class="plan-period">/mo</span>
+        </div>
+        <div *ngIf="annual()" class="plan-annual-note">Billed {{ annualTotal(plan) }}</div>
+      </div>
+      <ul class="plan-features">
+        <li *ngFor="let f of plan.features">
+          <span class="check">✓</span> {{ f }}
+        </li>
+      </ul>
+      <div class="plan-footer">
+        <ng-container *ngIf="auth.isLoggedIn(); else notLoggedIn">
+          <button class="btn btn--full"
+            [class.btn--primary]="plan.highlighted"
+            [class.btn--secondary]="!plan.highlighted"
+            (click)="checkout(plan)"
+            [disabled]="checkingOut() === plan.id">
+            {{ checkingOut() === plan.id ? 'Redirecting…' : 'Subscribe now' }}
+          </button>
+        </ng-container>
+        <ng-template #notLoggedIn>
+          <a routerLink="/auth/signup" class="btn btn--full"
+            [class.btn--primary]="plan.highlighted"
+            [class.btn--secondary]="!plan.highlighted">
+            Get started
+          </a>
+        </ng-template>
+        <div *ngIf="error() && checkingOut() === plan.id" class="plan-error">{{ error() }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Free tier -->
+  <div class="free-tier-card">
+    <div>
+      <div class="free-title">🆓 Free for dojos during beta</div>
+      <div class="free-sub">Sign up now and get 3 months free. No credit card required.</div>
+    </div>
+    <a routerLink="/auth/signup" class="btn btn--primary">Start free trial</a>
+  </div>
+
+  <!-- FAQ -->
+  <div class="faq-section">
+    <h2 class="faq-title">Frequently asked questions</h2>
+    <div class="faq-grid">
+      <div *ngFor="let q of faq" class="faq-item">
+        <div class="faq-q">{{ q.q }}</div>
+        <div class="faq-a">{{ q.a }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loyalty strip -->
+  <div class="loyalty-strip">
+    <div class="loyalty-strip-title">⭐ Loyalty program included in all plans</div>
+    <div class="loyalty-strip-sub">Every subscription earns parents 100 points. Renew and reward.</div>
+  </div>
+</div>

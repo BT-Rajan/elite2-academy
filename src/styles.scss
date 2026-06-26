@@ -383,3 +383,17 @@ table {
   text-align: left;
   &:hover { background: var(--surface-2); color: var(--danger); }
 }
+
+// ── Public pages shared ────────────────────────────────────────────────────────
+.section-tag {
+  display: inline-block;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  padding: 4px 12px;
+  border-radius: 20px;
+  margin-bottom: 12px;
+}
