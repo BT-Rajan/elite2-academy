@@ -1,10 +1,31 @@
 {
   "indexes": [
-    { "collectionGroup": "students",   "fields": [{"fieldPath":"parentUid","order":"ASCENDING"},{"fieldPath":"isActive","order":"ASCENDING"}] },
-    { "collectionGroup": "sessions",   "fields": [{"fieldPath":"coachUid","order":"ASCENDING"},{"fieldPath":"date","order":"DESCENDING"}] },
-    { "collectionGroup": "attendance", "fields": [{"fieldPath":"studentId","order":"ASCENDING"},{"fieldPath":"markedAt","order":"DESCENDING"}] },
-    { "collectionGroup": "threads",    "fields": [{"fieldPath":"coachUid","order":"ASCENDING"},{"fieldPath":"lastAt","order":"DESCENDING"}] },
-    { "collectionGroup": "threads",    "fields": [{"fieldPath":"parentUid","order":"ASCENDING"},{"fieldPath":"lastAt","order":"DESCENDING"}] }
+    { "collectionGroup": "students",
+      "fields": [{"fieldPath":"dojoId","order":"ASCENDING"},{"fieldPath":"isActive","order":"ASCENDING"},{"fieldPath":"firstName","order":"ASCENDING"}] },
+    { "collectionGroup": "students",
+      "fields": [{"fieldPath":"parentUid","order":"ASCENDING"},{"fieldPath":"isActive","order":"ASCENDING"}] },
+    { "collectionGroup": "sessions",
+      "fields": [{"fieldPath":"dojoId","order":"ASCENDING"},{"fieldPath":"date","order":"DESCENDING"}] },
+    { "collectionGroup": "sessions",
+      "fields": [{"fieldPath":"coachUid","order":"ASCENDING"},{"fieldPath":"date","order":"DESCENDING"}] },
+    { "collectionGroup": "attendance",
+      "fields": [{"fieldPath":"sessionId","order":"ASCENDING"},{"fieldPath":"studentId","order":"ASCENDING"}] },
+    { "collectionGroup": "attendance",
+      "fields": [{"fieldPath":"studentId","order":"ASCENDING"},{"fieldPath":"markedAt","order":"DESCENDING"}] },
+    { "collectionGroup": "threads",
+      "fields": [{"fieldPath":"coachUid","order":"ASCENDING"},{"fieldPath":"lastAt","order":"DESCENDING"}] },
+    { "collectionGroup": "threads",
+      "fields": [{"fieldPath":"parentUid","order":"ASCENDING"},{"fieldPath":"lastAt","order":"DESCENDING"}] },
+    { "collectionGroup": "notifications",
+      "fields": [{"fieldPath":"uid","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"}] },
+    { "collectionGroup": "notifications",
+      "fields": [{"fieldPath":"uid","order":"ASCENDING"},{"fieldPath":"isRead","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"}] },
+    { "collectionGroup": "transactions",
+      "fields": [{"fieldPath":"accountId","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"}] },
+    { "collectionGroup": "schedules",
+      "fields": [{"fieldPath":"dojoId","order":"ASCENDING"},{"fieldPath":"isActive","order":"ASCENDING"},{"fieldPath":"dayOfWeek","order":"ASCENDING"}] },
+    { "collectionGroup": "users",
+      "fields": [{"fieldPath":"dojoId","order":"ASCENDING"},{"fieldPath":"role","order":"ASCENDING"},{"fieldPath":"displayName","order":"ASCENDING"}] }
   ],
   "fieldOverrides": []
 }
