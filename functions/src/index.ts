@@ -17,7 +17,7 @@ import Stripe from 'stripe';
 
 admin.initializeApp();
 const db     = admin.firestore();
-const stripe = new Stripe(process.env['STRIPE_SECRET_KEY'] ?? '', { apiVersion: '2024-04-10' });
+const stripe = new Stripe(process.env['STRIPE_SECRET_KEY'] ?? '', { apiVersion: '2023-10-16' });
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const POINTS = {
@@ -334,7 +334,7 @@ export const stripeWebhook = functions.https.onRequest(async (req, res) => {
         subscriptionId: sub.id,
         status:         sub.status,
         plan:           (sub.items.data[0]?.price?.nickname ?? 'unknown'),
-        currentPeriodEnd: new Date(sub.current_period_end * 1000),
+        currentPeriodEnd: new Date((sub as any).current_period_end * 1000),
         updatedAt:      admin.firestore.FieldValue.serverTimestamp(),
       }, { merge: true });
 
@@ -360,7 +360,9 @@ export const stripeWebhook = functions.https.onRequest(async (req, res) => {
 
     case 'invoice.payment_failed': {
       const inv = event.data.object as Stripe.Invoice;
-      const uid = (inv.subscription_details?.metadata?.['uid']) ?? '';
+      const uid = (inv as any).subscription_details?.metadata?.['uid']
+               ?? (inv as any).metadata?.['uid']
+               ?? '';
       if (uid) {
         await sendNotification(uid, 'system',
           '⚠ Payment failed',
