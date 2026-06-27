@@ -1,7 +1,8 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, DestroyRef, inject, signal, OnInit } from '@angular/core';
 import { CommonModule, AsyncPipe, DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Observable, combineLatest } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../../core/services/auth.service';
 import { StudentService } from '../../../core/services/student.service';
 import { UserService } from '../../../core/services/user.service';
@@ -129,6 +130,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
   `
 })
 export class AdminDashboardComponent implements OnInit {
+  private destroyRef = inject(DestroyRef);
   auth = inject(AuthService);
   private sts  = inject(StudentService);
   private us   = inject(UserService);
@@ -156,15 +158,15 @@ export class AdminDashboardComponent implements OnInit {
     this.coaches$  = this.us.coaches$(dojoId);
     this.sessions$ = this.ss.byDojo$(dojoId);
 
-    this.students$.subscribe(s => {
+    this.students$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(s => {
       this.stats.update(v => ({ ...v, students: s.length }));
       this.setupSteps[3].done = s.length > 0;
     });
-    this.coaches$.subscribe(c => {
+    this.coaches$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(c => {
       this.stats.update(v => ({ ...v, coaches: c.length }));
       this.setupSteps[1].done = c.length > 0;
     });
-    this.sessions$.subscribe(s => {
+    this.sessions$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(s => {
       this.stats.update(v => ({ ...v, sessions: s.filter(x => !x.isClosed).length }));
       this.setupSteps[4].done = s.length > 0;
     });

@@ -1,4 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
@@ -6,7 +7,7 @@ import { AuthService } from '../../../core/services/auth.service';
 @Component({
   selector: 'app-reset-password',
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink],
   template: `
     <div class="auth-page">
       <div class="auth-card">

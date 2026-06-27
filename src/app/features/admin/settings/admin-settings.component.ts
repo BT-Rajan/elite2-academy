@@ -357,15 +357,17 @@ export class AdminSettingsComponent implements OnInit {
   async addReward() {
     if (!this.newReward.name) return;
     this.saving.set(true);
-    await this.ls['firestore'] && this.ls.add({
-      dojoId: this.dojoId(),
+    const { addDoc, collection } = await import('@angular/fire/firestore');
+    const ref = collection(this.firestore, 'loyalty_rewards');
+    await addDoc(ref, {
+      dojoId:      this.dojoId(),
       name:        this.newReward.name,
       description: this.newReward.description,
       pointsCost:  this.newReward.pointsCost,
-      type:        this.newReward.type as any,
-      discountPct: this.newReward.type === 'discount' ? this.newReward.discountPct : undefined,
+      type:        this.newReward.type as LoyaltyReward['type'],
+      discountPct: this.newReward.type === 'discount' ? this.newReward.discountPct : null,
       isActive:    true,
-    } as any);
+    });
     this.newReward = { name: '', type: 'discount', pointsCost: 500, description: '', discountPct: 10, isActive: true };
     this.showAddReward.set(false);
     this.saving.set(false);

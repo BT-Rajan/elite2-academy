@@ -1,7 +1,8 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, DestroyRef, inject, signal, OnInit } from '@angular/core';
 import { CommonModule, AsyncPipe, DatePipe } from '@angular/common';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { Observable, switchMap, of } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../../core/services/auth.service';
 import { StudentService } from '../../../core/services/student.service';
 import { SessionService } from '../../../core/services/session.service';
@@ -260,6 +261,7 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'comments';
   `]
 })
 export class ChildProgressComponent implements OnInit {
+  private destroyRef = inject(DestroyRef);
   private auth  = inject(AuthService);
   private route = inject(ActivatedRoute);
   private sts   = inject(StudentService);
@@ -303,7 +305,7 @@ export class ChildProgressComponent implements OnInit {
     this.route.params.subscribe(p => {
       const id = p['id'];
       if (id) { this.selectChild(id); return; }
-      this.children$.subscribe(list => {
+      this.children$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(list => {
         if (list.length > 0 && !this.selectedId()) this.selectChild(list[0].id);
       });
     });
@@ -316,7 +318,7 @@ export class ChildProgressComponent implements OnInit {
     this.attendance$  = this.as_.byStudent$(id);
     this.beltHistory$ = this.bs.history$(id);
     this.objectives$  = this.bs.objectives$(id);
-    this.attendance$.subscribe(r => this.attPct.set(this.calcAttPct(r)));
+    this.attendance$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(r => this.attPct.set(this.calcAttPct(r)));
   }
 
   // ── Helpers ─────────────────────────────────────────────────

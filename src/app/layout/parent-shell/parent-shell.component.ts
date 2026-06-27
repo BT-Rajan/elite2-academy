@@ -1,4 +1,4 @@
-import { Component, inject, computed, OnInit } from '@angular/core';
+import { Component, inject, computed, OnInit, signal } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
@@ -62,17 +62,14 @@ export class ParentShellComponent implements OnInit {
   private ns = inject(NotificationService);
 
   user           = computed(() => this.auth.currentUser());
-  unreadNotifs   = computed(() => 0);
-  unreadMessages = computed(() => 0);
-
-  private _unreadNotifs   = 0;
-  private _unreadMessages = 0;
+  unreadNotifs   = signal(0);
+  unreadMessages = signal(0);
 
   ngOnInit() {
     const uid = this.auth.currentUser()?.uid;
     if (!uid) return;
     this.ns.forUser$(uid).subscribe(notifs => {
-      this._unreadNotifs = notifs.filter(n => !n.isRead).length;
+      this.unreadNotifs.set(notifs.filter(n => !n.isRead).length);
     });
   }
 }
