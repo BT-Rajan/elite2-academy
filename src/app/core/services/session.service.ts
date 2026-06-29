@@ -1,30 +1,30 @@
 import { Injectable } from '@angular/core';
-import { FirestoreBaseService } from './firestore-base.service';
+import { BaseHttpService } from './base-http.service';
 import { ClassSession, SessionComment } from '../models';
-import { collection, addDoc, query, where, orderBy, collectionData, serverTimestamp } from '@angular/fire/firestore';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 @Injectable({ providedIn: 'root' })
-export class SessionService extends FirestoreBaseService<ClassSession> {
-  protected collectionPath = 'sessions';
+export class SessionService extends BaseHttpService<ClassSession> {
+  protected endpoint = '/sessions';
 
-  byDojo$(dojoId: string) {
-    return this.list$([this.byDojo(dojoId), this.orderByField('date', 'desc'), this.limitTo(30)]);
+  byCoach$(coachUid: string): Observable<ClassSession[]> {
+    return this.list$({ coachUid });
   }
 
-  byCoach$(coachUid: string) {
-    return this.list$([this.byField('coachUid', coachUid), this.orderByField('date', 'desc'), this.limitTo(30)]);
+  byDojo$(dojoId: string): Observable<ClassSession[]> {
+    return this.list$({ dojoId });
   }
 
-  // Session comments live in a subcollection
   comments$(sessionId: string): Observable<SessionComment[]> {
-    const ref = collection(this.firestore, `sessions/${sessionId}/comments`);
-    return collectionData(query(ref, orderBy('createdAt', 'asc')), { idField: 'id' }) as Observable<SessionComment[]>;
+    return this.api.get<{ data: SessionComment[] }>(`/sessions/${sessionId}/comments`)
+      .pipe(map(r => r.data));
   }
 
-  async addComment(sessionId: string, comment: Omit<SessionComment, 'id'>): Promise<string> {
-    const ref = collection(this.firestore, `sessions/${sessionId}/comments`);
-    const d = await addDoc(ref, { ...comment, createdAt: serverTimestamp() });
-    return d.id;
+  async addComment(sessionId: string, comment: Partial<SessionComment>): Promise<string> {
+    const res = await this.api.post<{ data: SessionComment }>(
+      `/sessions/${sessionId}/comments`, comment
+    ).toPromise();
+    return String(res!.data.id);
   }
 }

@@ -1,78 +1,85 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
-import {
-  Auth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
-  signOut, sendPasswordResetEmail, onAuthStateChanged, User
-} from '@angular/fire/auth';
-import { Firestore, doc, setDoc, getDoc, serverTimestamp } from '@angular/fire/firestore';
 import { Router } from '@angular/router';
+import { tap, map } from 'rxjs/operators';
+import { ApiService } from './api.service';
 import { UserProfile, UserRole } from '../models';
+
+interface AuthResponse {
+  token:   string;
+  user:    UserProfile;
+}
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private auth      = inject(Auth);
-  private firestore = inject(Firestore);
-  private router    = inject(Router);
+  private api    = inject(ApiService);
+  private router = inject(Router);
 
-  readonly currentUser = signal<UserProfile | null>(null);
-  readonly isLoading   = signal(true);
+  readonly currentUser = signal<UserProfile | null>(this.loadUser());
+  readonly isLoading   = signal(false);
   readonly isLoggedIn  = computed(() => !!this.currentUser());
   readonly role        = computed(() => this.currentUser()?.role ?? null);
 
-  constructor() {
-    onAuthStateChanged(this.auth, async (user) => {
-      if (user) {
-        const profile = await this.loadProfile(user.uid);
-        this.currentUser.set(profile);
-      } else {
-        this.currentUser.set(null);
-      }
-      this.isLoading.set(false);
-    });
+  private loadUser(): UserProfile | null {
+    try {
+      const raw = localStorage.getItem('dojo_user');
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
   }
 
   async login(email: string, password: string): Promise<void> {
-    const cred = await signInWithEmailAndPassword(this.auth, email, password);
-    const profile = await this.loadProfile(cred.user.uid);
-    this.currentUser.set(profile);
-    this.redirectByRole(profile?.role);
+    this.isLoading.set(true);
+    try {
+      const res = await this.api.post<AuthResponse>('/auth/login', { email, password })
+        .toPromise();
+      if (!res) throw new Error('No response from server.');
+      this.storeSession(res);
+      this.redirectByRole(res.user.role);
+    } finally { this.isLoading.set(false); }
   }
 
-  async signup(email: string, password: string, displayName: string, role: UserRole, dojoId: string): Promise<void> {
-    const cred = await createUserWithEmailAndPassword(this.auth, email, password);
-    const profile: UserProfile = {
-      uid: cred.user.uid, email, displayName, role, dojoId,
-      createdAt: new Date(),
-    };
-    await setDoc(doc(this.firestore, `users/${cred.user.uid}`), {
-      ...profile, createdAt: serverTimestamp(),
-    });
-    this.currentUser.set(profile);
-    this.redirectByRole(role);
+  async signup(
+    email: string, password: string, displayName: string,
+    role: UserRole, dojoId: string
+  ): Promise<void> {
+    this.isLoading.set(true);
+    try {
+      const res = await this.api.post<AuthResponse>('/auth/register', {
+        email, password, displayName, role, dojoId,
+      }).toPromise();
+      if (!res) throw new Error('No response from server.');
+      this.storeSession(res);
+      this.redirectByRole(res.user.role);
+    } finally { this.isLoading.set(false); }
   }
 
   async logout(): Promise<void> {
-    await signOut(this.auth);
-    this.currentUser.set(null);
+    try { await this.api.post('/auth/logout', {}).toPromise(); } catch {}
+    this.clearSession();
     this.router.navigate(['/auth/login']);
   }
 
   async resetPassword(email: string): Promise<void> {
-    await sendPasswordResetEmail(this.auth, email);
+    await this.api.post('/auth/forgot-password', { email }).toPromise();
   }
 
-  private async loadProfile(uid: string): Promise<UserProfile | null> {
-    const snap = await getDoc(doc(this.firestore, `users/${uid}`));
-    if (!snap.exists()) return null;
-    const d = snap.data();
-    return { ...d, uid, createdAt: d['createdAt']?.toDate() ?? new Date() } as UserProfile;
+  private storeSession(res: AuthResponse): void {
+    localStorage.setItem('dojo_token', res.token);
+    localStorage.setItem('dojo_user',  JSON.stringify(res.user));
+    this.currentUser.set(res.user);
   }
 
-  private redirectByRole(role?: UserRole | null): void {
+  private clearSession(): void {
+    localStorage.removeItem('dojo_token');
+    localStorage.removeItem('dojo_user');
+    this.currentUser.set(null);
+  }
+
+  private redirectByRole(role: UserRole): void {
     const map: Record<UserRole, string> = {
       admin:  '/admin/dashboard',
       coach:  '/coach/dashboard',
       parent: '/parent/dashboard',
     };
-    this.router.navigate([role ? map[role] : '/auth/login']);
+    this.router.navigate([map[role] ?? '/auth/login']);
   }
 }

@@ -1,13 +1,4 @@
 {
-  "firestore": {
-    "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
-  },
-  "functions": {
-    "source": "functions",
-    "runtime": "nodejs20",
-    "ignore": ["node_modules", ".git", "*.local"]
-  },
   "hosting": {
     "public": "dist/dojo-platform/browser",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
@@ -16,10 +7,6 @@
       {
         "source": "**/*.@(js|css)",
         "headers": [{ "key": "Cache-Control", "value": "max-age=31536000" }]
-      },
-      {
-        "source": "firebase-messaging-sw.js",
-        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
       }
     ]
   }

@@ -157,7 +157,7 @@ export class DisciplinesComponent implements OnInit {
   async addDiscipline() {
     if (!this.newDisc.name) { this.discError.set('Name is required.'); return; }
     this.saving.set(true); this.discError.set('');
-    await this.ds.add({
+    await this.ds.create({
       dojoId: this.auth.currentUser()!.dojoId,
       name: this.newDisc.name,
       color: this.newDisc.color,

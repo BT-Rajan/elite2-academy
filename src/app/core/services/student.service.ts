@@ -1,20 +1,17 @@
 import { Injectable } from '@angular/core';
-import { FirestoreBaseService } from './firestore-base.service';
+import { BaseHttpService } from './base-http.service';
 import { Student } from '../models';
+import { Observable } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
-export class StudentService extends FirestoreBaseService<Student> {
-  protected collectionPath = 'students';
+export class StudentService extends BaseHttpService<Student> {
+  protected endpoint = '/students';
 
-  byParent$(parentUid: string) {
-    return this.list$([this.byField('parentUid', parentUid), this.byField('isActive', true)]);
+  byParent$(parentUid: string): Observable<Student[]> {
+    return this.list$({ parentUid });
   }
 
-  byDojo$(dojoId: string) {
-    return this.list$([this.byDojo(dojoId), this.byField('isActive', true), this.orderByField('firstName')]);
-  }
-
-  byCoach$(dojoId: string) {
-    return this.byDojo$(dojoId);
+  byDojo$(dojoId: string): Observable<Student[]> {
+    return this.list$({ dojoId });
   }
 }

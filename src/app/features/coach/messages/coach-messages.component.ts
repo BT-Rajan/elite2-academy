@@ -149,7 +149,7 @@ export class CoachMessagesComponent implements OnInit {
   async createThread() {
     if (!this.newThreadStudentId) return;
     const user = this.auth.currentUser()!;
-    const id = await this.ms.add({
+    const id = await this.ms.create({
       dojoId: user.dojoId, studentId: this.newThreadStudentId,
       parentUid: 'pending', coachUid: user.uid,
       unreadParent: 0, unreadCoach: 0,

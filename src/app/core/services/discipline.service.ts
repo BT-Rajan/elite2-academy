@@ -1,29 +1,28 @@
 import { Injectable } from '@angular/core';
-import { Firestore, collection, collectionData, query, orderBy, addDoc, updateDoc, doc, serverTimestamp } from '@angular/fire/firestore';
-import { FirestoreBaseService } from './firestore-base.service';
+import { BaseHttpService } from './base-http.service';
 import { Discipline, Belt } from '../models';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 @Injectable({ providedIn: 'root' })
-export class DisciplineService extends FirestoreBaseService<Discipline> {
-  protected collectionPath = 'disciplines';
+export class DisciplineService extends BaseHttpService<Discipline> {
+  protected endpoint = '/disciplines';
 
   byDojo$(dojoId: string): Observable<Discipline[]> {
-    return this.list$([this.byDojo(dojoId), this.orderByField('name')]);
+    return this.list$({ dojoId });
   }
 
   belts$(disciplineId: string): Observable<Belt[]> {
-    const ref = collection(this.firestore, `disciplines/${disciplineId}/belts`);
-    return collectionData(query(ref, orderBy('sortOrder')), { idField: 'id' }) as Observable<Belt[]>;
+    return this.api.get<{ data: Belt[] }>(`/disciplines/${disciplineId}/belts`)
+      .pipe(map(r => r.data));
   }
 
-  async addBelt(disciplineId: string, belt: Omit<Belt, 'id'>): Promise<string> {
-    const ref = collection(this.firestore, `disciplines/${disciplineId}/belts`);
-    const d = await addDoc(ref, { ...belt, createdAt: serverTimestamp() });
-    return d.id;
+  async addBelt(disciplineId: string, belt: Partial<Belt>): Promise<string> {
+    const res = await this.api.post<{ data: Belt }>(`/disciplines/${disciplineId}/belts`, belt).toPromise();
+    return String(res!.data.id);
   }
 
   async updateBelt(disciplineId: string, beltId: string, data: Partial<Belt>): Promise<void> {
-    await updateDoc(doc(this.firestore, `disciplines/${disciplineId}/belts/${beltId}`), data);
+    await this.api.patch(`/disciplines/${disciplineId}/belts/${beltId}`, data).toPromise();
   }
 }

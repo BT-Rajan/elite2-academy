@@ -1,18 +1,14 @@
 import { Injectable } from '@angular/core';
-import { FirestoreBaseService } from './firestore-base.service';
+import { BaseHttpService } from './base-http.service';
 import { ClassSchedule } from '../models';
 import { Observable } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
-export class ScheduleService extends FirestoreBaseService<ClassSchedule> {
-  protected collectionPath = 'schedules';
+export class ScheduleService extends BaseHttpService<ClassSchedule> {
+  protected endpoint = '/schedules';
 
   byDojo$(dojoId: string): Observable<ClassSchedule[]> {
-    return this.list$([
-      this.byField('dojoId', dojoId),
-      this.byField('isActive', true),
-      this.orderByField('dayOfWeek'),
-    ]);
+    return this.list$({ dojoId, isActive: 'true' });
   }
 
   public$(dojoId: string): Observable<ClassSchedule[]> {

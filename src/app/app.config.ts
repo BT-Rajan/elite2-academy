@@ -1,18 +1,23 @@
 import { ApplicationConfig } from '@angular/core';
 import { provideRouter, withViewTransitions } from '@angular/router';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { HttpInterceptorFn } from '@angular/common/http';
 import { routes } from './app.routes';
-import { provideFirebaseApp, initializeApp } from '@angular/fire/app';
-import { provideAuth, getAuth } from '@angular/fire/auth';
-import { provideFirestore, getFirestore } from '@angular/fire/firestore';
-import { provideFunctions, getFunctions } from '@angular/fire/functions';
-import { environment } from '../environments/environment';
+
+// JWT interceptor — injects Bearer token on every request
+const jwtInterceptor: HttpInterceptorFn = (req, next) => {
+  const token = localStorage.getItem('dojo_token');
+  if (token) {
+    req = req.clone({
+      setHeaders: { Authorization: `Bearer ${token}` }
+    });
+  }
+  return next(req);
+};
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideRouter(routes, withViewTransitions()),
-    provideFirebaseApp(() => initializeApp(environment.firebase)),
-    provideAuth(() => getAuth()),
-    provideFirestore(() => getFirestore()),
-    provideFunctions(() => getFunctions()),
+    provideHttpClient(withInterceptors([jwtInterceptor])),
   ]
 };

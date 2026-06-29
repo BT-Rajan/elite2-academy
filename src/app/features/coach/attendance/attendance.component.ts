@@ -183,7 +183,7 @@ export class AttendanceComponent implements OnInit {
     if (!this.newSession.className) { this.formError.set('Class name is required.'); return; }
     this.saving.set(true);
     const user = this.auth.currentUser()!;
-    const id = await this.ss.add({
+    const session = await this.ss.create({
       dojoId: user.dojoId, coachUid: user.uid,
       classId: '', disciplineId: '',
       className: this.newSession.className,
@@ -193,10 +193,7 @@ export class AttendanceComponent implements OnInit {
       location: this.newSession.location,
       isClosed: false,
     });
-    const session = await this.ss.get$(id).pipe().toPromise();
-    this.activeSession.set({ ...this.newSession, id, isClosed: false,
-      dojoId: user.dojoId, coachUid: user.uid, classId: '', disciplineId: '',
-      date: new Date(this.newSession.date) } as ClassSession);
+    this.activeSession.set(session);
     this.showNewForm.set(false);
     this.saving.set(false);
   }
@@ -204,7 +201,7 @@ export class AttendanceComponent implements OnInit {
   async closeSession() {
     const s = this.activeSession();
     if (!s) return;
-    await this.ss.update(s.id, { isClosed: true } as any);
+    await this.ss.update(String(s.id), { isClosed: true } as any);
     this.activeSession.set(null);
     this.statusMap.set({});
   }
@@ -218,8 +215,8 @@ export class AttendanceComponent implements OnInit {
     this.statusMap.set({ ...prev, [student.id]: status });
 
     const user = this.auth.currentUser()!;
-    await this.as_.add({
-      sessionId, studentId: student.id, status,
+    await this.as_.create({
+      sessionId, studentId: String(student.id), status,
       markedBy: user.uid, markedAt: new Date() as any,
     });
 

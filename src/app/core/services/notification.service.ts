@@ -1,29 +1,31 @@
 import { Injectable } from '@angular/core';
-import { Firestore, updateDoc, doc, serverTimestamp } from '@angular/fire/firestore';
-import { FirestoreBaseService } from './firestore-base.service';
+import { Observable, interval } from 'rxjs';
+import { switchMap, startWith, map, distinctUntilChanged } from 'rxjs/operators';
+import { BaseHttpService } from './base-http.service';
 import { Notification } from '../models';
 
 @Injectable({ providedIn: 'root' })
-export class NotificationService extends FirestoreBaseService<Notification> {
-  protected collectionPath = 'notifications';
+export class NotificationService extends BaseHttpService<Notification> {
+  protected endpoint = '/notifications';
 
-  forUser$(uid: string) {
-    return this.list$([
-      this.byField('uid', uid),
-      this.orderByField('createdAt', 'desc'),
-      this.limitTo(50),
-    ]);
+  // Poll every 30 seconds for new notifications
+  forUser$(uid: string): Observable<Notification[]> {
+    return interval(30000).pipe(
+      startWith(0),
+      switchMap(() =>
+        this.api.get<{ data: Notification[] }>('/notifications', { uid })
+          .pipe(map(r => r.data))
+      ),
+      distinctUntilChanged((a, b) => a.length === b.length &&
+        a[0]?.id === b[0]?.id)
+    );
   }
 
   async markRead(id: string): Promise<void> {
-    await updateDoc(doc(this.firestore, `notifications/${id}`), {
-      isRead: true, readAt: serverTimestamp(),
-    });
+    await this.api.patch(`/notifications/${id}`, { isRead: true }).toPromise();
   }
 
   async markAllRead(uid: string): Promise<void> {
-    const all = await this.list$([this.byField('uid', uid), this.byField('isRead', false)])
-      .toPromise();
-    await Promise.all((all ?? []).map(n => this.markRead(n.id)));
+    await this.api.post('/notifications/mark-all-read', { uid }).toPromise();
   }
 }

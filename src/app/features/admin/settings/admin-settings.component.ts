@@ -2,7 +2,7 @@ import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule, AsyncPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Observable } from 'rxjs';
-import { Firestore, doc, getDoc, setDoc, serverTimestamp } from '@angular/fire/firestore';
+import { ApiService } from '../../../core/services/api.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { LoyaltyService } from '../../../core/services/loyalty.service';
 import { LoyaltyReward } from '../../../core/models';
@@ -231,8 +231,8 @@ type SettingsTab = 'dojo' | 'loyalty' | 'notifications';
 })
 export class AdminSettingsComponent implements OnInit {
   private auth      = inject(AuthService);
-  private firestore = inject(Firestore);
   private ls        = inject(LoyaltyService);
+  private api       = inject(ApiService);
 
   rewards$!: Observable<LoyaltyReward[]>;
 
@@ -300,23 +300,16 @@ export class AdminSettingsComponent implements OnInit {
   }
 
   async loadDojoSettings() {
-    const snap = await getDoc(doc(this.firestore, `dojos/${this.dojoId()}`));
-    if (snap.exists()) {
-      const d = snap.data();
-      this.dojo = {
-        name: d['name'] ?? '', email: d['email'] ?? '',
-        phone: d['phone'] ?? '', address: d['address'] ?? '',
-        timezone: d['timezone'] ?? 'UTC',
-      };
-    }
+    try {
+      const res = await this.api.get<{ data: any }>(`/dojos/${this.dojoId()}`).toPromise();
+      if (res?.data) { const d = res.data; this.dojo = { name: d.name ?? '', email: d.email ?? '', phone: d.phone ?? '', address: d.address ?? '', timezone: d.timezone ?? 'UTC' }; }
+    } catch {}
   }
 
   async saveDojo() {
     this.saving.set(true); this.saveError.set(''); this.saved.set(false);
     try {
-      await setDoc(doc(this.firestore, `dojos/${this.dojoId()}`), {
-        ...this.dojo, updatedAt: serverTimestamp(),
-      }, { merge: true });
+      await this.api.put<void>(`/dojos/${this.dojoId()}`, this.dojo).toPromise();
       this.saved.set(true);
       setTimeout(() => this.saved.set(false), 3000);
     } catch (e: any) {
@@ -327,8 +320,7 @@ export class AdminSettingsComponent implements OnInit {
   async savePointRules() {
     this.saving.set(true);
     const rules = Object.fromEntries(this.pointRules.map(r => [r.key, r.points]));
-    await setDoc(doc(this.firestore, `dojos/${this.dojoId()}`),
-      { pointRules: rules, updatedAt: serverTimestamp() }, { merge: true });
+    await this.api.patch<void>(`/dojos/${this.dojoId()}/settings`, { pointRules: rules }).toPromise();
     this.saved.set(true);
     setTimeout(() => this.saved.set(false), 3000);
     this.saving.set(false);
@@ -337,8 +329,7 @@ export class AdminSettingsComponent implements OnInit {
   async saveTiers() {
     this.saving.set(true);
     const thresholds = Object.fromEntries(this.tiers.map(t => [t.name.toLowerCase(), t.threshold]));
-    await setDoc(doc(this.firestore, `dojos/${this.dojoId()}`),
-      { tierThresholds: thresholds, updatedAt: serverTimestamp() }, { merge: true });
+    await this.api.patch<void>(`/dojos/${this.dojoId()}/settings`, { tierThresholds: thresholds }).toPromise();
     this.saved.set(true);
     setTimeout(() => this.saved.set(false), 3000);
     this.saving.set(false);
@@ -347,8 +338,7 @@ export class AdminSettingsComponent implements OnInit {
   async saveNotifPrefs() {
     this.saving.set(true);
     const prefs = Object.fromEntries(this.notifPrefs.map(p => [p.key, p.enabled]));
-    await setDoc(doc(this.firestore, `dojos/${this.dojoId()}`),
-      { notifPrefs: prefs, updatedAt: serverTimestamp() }, { merge: true });
+    await this.api.patch<void>(`/dojos/${this.dojoId()}/settings`, { notifPrefs: prefs }).toPromise();
     this.saved.set(true);
     setTimeout(() => this.saved.set(false), 3000);
     this.saving.set(false);
@@ -357,9 +347,7 @@ export class AdminSettingsComponent implements OnInit {
   async addReward() {
     if (!this.newReward.name) return;
     this.saving.set(true);
-    const { addDoc, collection } = await import('@angular/fire/firestore');
-    const ref = collection(this.firestore, 'loyalty_rewards');
-    await addDoc(ref, {
+    await this.api.post<void>('/loyalty-rewards', {
       dojoId:      this.dojoId(),
       name:        this.newReward.name,
       description: this.newReward.description,
@@ -367,14 +355,14 @@ export class AdminSettingsComponent implements OnInit {
       type:        this.newReward.type as LoyaltyReward['type'],
       discountPct: this.newReward.type === 'discount' ? this.newReward.discountPct : null,
       isActive:    true,
-    });
+    }).toPromise();
     this.newReward = { name: '', type: 'discount', pointsCost: 500, description: '', discountPct: 10, isActive: true };
     this.showAddReward.set(false);
     this.saving.set(false);
   }
 
   async toggleReward(r: LoyaltyReward) {
-    await this.ls.update(r.id, { isActive: !r.isActive } as any);
+    await this.api.patch<void>(`/loyalty-rewards/${r.id}`, { isActive: !r.isActive }).toPromise();
   }
 
   rewardIcon(type: string): string {

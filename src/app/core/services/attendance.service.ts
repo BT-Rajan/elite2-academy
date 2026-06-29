@@ -1,22 +1,21 @@
 import { Injectable } from '@angular/core';
-import { Firestore, collection, addDoc, query, where, orderBy, getDocs, serverTimestamp, updateDoc, doc } from '@angular/fire/firestore';
-import { FirestoreBaseService } from './firestore-base.service';
-import { AttendanceRecord, AttendanceStatus, SessionComment } from '../models';
-import { inject } from '@angular/core';
+import { BaseHttpService } from './base-http.service';
+import { AttendanceRecord } from '../models';
+import { Observable } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
-export class AttendanceService extends FirestoreBaseService<AttendanceRecord> {
-  protected collectionPath = 'attendance';
+export class AttendanceService extends BaseHttpService<AttendanceRecord> {
+  protected endpoint = '/attendance';
 
-  bySession$(sessionId: string) {
-    return this.list$([this.byField('sessionId', sessionId)]);
+  bySession$(sessionId: string): Observable<AttendanceRecord[]> {
+    return this.list$({ sessionId });
   }
 
-  byStudent$(studentId: string) {
-    return this.list$([this.byField('studentId', studentId), this.orderByField('markedAt', 'desc'), this.limitTo(50)]);
+  byStudent$(studentId: string): Observable<AttendanceRecord[]> {
+    return this.list$({ studentId, limit: '50', sort: 'desc' });
   }
 
-  async markAll(records: Omit<AttendanceRecord, 'id'>[]): Promise<void> {
-    await Promise.all(records.map(r => this.add(r)));
+  async markAll(records: Partial<AttendanceRecord>[]): Promise<void> {
+    await this.api.post('/attendance/bulk', { records }).toPromise();
   }
 }

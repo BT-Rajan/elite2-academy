@@ -1,44 +1,36 @@
 import { Injectable } from '@angular/core';
-import { Firestore, collection, collectionData, addDoc, query, where, orderBy, serverTimestamp, doc, updateDoc } from '@angular/fire/firestore';
-import { FirestoreBaseService } from './firestore-base.service';
+import { BaseHttpService } from './base-http.service';
 import { Belt, BeltHistory, StudentObjective } from '../models';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 @Injectable({ providedIn: 'root' })
-export class BeltService extends FirestoreBaseService<Belt> {
-  protected collectionPath = 'belts';
+export class BeltService extends BaseHttpService<Belt> {
+  protected endpoint = '/belts';
 
   byDiscipline$(disciplineId: string): Observable<Belt[]> {
-    return this.list$([this.byField('disciplineId', disciplineId), this.orderByField('sortOrder')]);
+    return this.list$({ disciplineId });
   }
 
   history$(studentId: string): Observable<BeltHistory[]> {
-    const ref = collection(this.firestore, `students/${studentId}/beltHistory`);
-    return collectionData(query(ref, orderBy('awardedAt', 'desc')), { idField: 'id' }) as Observable<BeltHistory[]>;
+    return this.api.get<{ data: BeltHistory[] }>(`/students/${studentId}/belt-history`)
+      .pipe(map(r => r.data));
   }
 
-  async award(studentId: string, entry: Omit<BeltHistory, 'id'>): Promise<void> {
-    const ref = collection(this.firestore, `students/${studentId}/beltHistory`);
-    await addDoc(ref, { ...entry, awardedAt: serverTimestamp() });
-    await updateDoc(doc(this.firestore, `students/${studentId}`), {
-      currentBeltId: entry.beltId,
-      updatedAt: serverTimestamp(),
-    });
+  async award(studentId: string, entry: Partial<BeltHistory>): Promise<void> {
+    await this.api.post(`/students/${studentId}/belt-history`, entry).toPromise();
   }
 
   objectives$(studentId: string): Observable<StudentObjective[]> {
-    const ref = collection(this.firestore, `students/${studentId}/objectives`);
-    return collectionData(query(ref, orderBy('isComplete'), ), { idField: 'id' }) as Observable<StudentObjective[]>;
+    return this.api.get<{ data: StudentObjective[] }>(`/students/${studentId}/objectives`)
+      .pipe(map(r => r.data));
   }
 
-  async addObjective(studentId: string, obj: Omit<StudentObjective, 'id'>): Promise<void> {
-    const ref = collection(this.firestore, `students/${studentId}/objectives`);
-    await addDoc(ref, { ...obj, createdAt: serverTimestamp() });
+  async addObjective(studentId: string, obj: Partial<StudentObjective>): Promise<void> {
+    await this.api.post(`/students/${studentId}/objectives`, obj).toPromise();
   }
 
   async completeObjective(studentId: string, objId: string): Promise<void> {
-    await updateDoc(doc(this.firestore, `students/${studentId}/objectives/${objId}`), {
-      isComplete: true, completedAt: serverTimestamp(),
-    });
+    await this.api.patch(`/students/${studentId}/objectives/${objId}`, { isComplete: true }).toPromise();
   }
 }
