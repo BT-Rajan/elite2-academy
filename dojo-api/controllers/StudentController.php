@@ -116,6 +116,44 @@ class StudentController {
         Response::ok($stmt->fetchAll());
     }
 
+    // GET /students/:id/comments — all session comments for this student, across all sessions
+    public function comments(int $id): never {
+        AuthMiddleware::require();
+        $stmt = $this->db->prepare("
+            SELECT * FROM session_comments WHERE student_id = ? ORDER BY created_at DESC LIMIT 50");
+        $stmt->execute([$id]);
+        Response::ok($stmt->fetchAll());
+    }
+
+    // POST /students/:id/comments — coach note or skill assessment not tied to a specific session
+    public function addComment(int $id): never {
+        $auth = AuthMiddleware::require();
+        AuthMiddleware::requireRole($auth, 'admin', 'coach');
+        $b      = $this->body();
+        $skills = !empty($b['skills']) ? json_encode($b['skills']) : null;
+        $this->db->prepare("
+            INSERT INTO session_comments (session_id, student_id, coach_uid, coach_name, comment, skills)
+            VALUES (NULL, ?, ?, ?, ?, ?)")
+            ->execute([
+                $id, $auth['uid'], $b['coachName'] ?? '',
+                $b['comment'] ?? '', $skills,
+            ]);
+
+        // Notify parent
+        $stmt = $this->db->prepare("SELECT parent_uid FROM students WHERE id = ?");
+        $stmt->execute([$id]);
+        $s = $stmt->fetch();
+        if ($s) {
+            $this->db->prepare("INSERT INTO notifications (uid, type, title, body) VALUES (?,?,?,?)")
+                ->execute([
+                    $s['parent_uid'], 'message',
+                    "New note from {$b['coachName']}",
+                    substr($b['comment'] ?? '', 0, 100),
+                ]);
+        }
+        Response::created(['id' => $this->db->lastInsertId()]);
+    }
+
     // POST /students/:id/objectives
     public function addObjective(int $id): never {
         $auth = AuthMiddleware::require();
@@ -134,12 +172,13 @@ class StudentController {
         $completedAt = !empty($b['isComplete']) ? date('Y-m-d H:i:s') : null;
         $this->db->prepare("UPDATE student_objectives SET is_complete=?, completed_at=? WHERE id=? AND student_id=?")
             ->execute([(int)($b['isComplete'] ?? 0), $completedAt, $objId, $id]);
-        // Notify parent
+        // Notify parent on completion
         if (!empty($b['isComplete'])) {
-            $obj     = $this->db->prepare("SELECT description FROM student_objectives WHERE id = ?")->execute([$objId]);
-            $student = $this->db->prepare("SELECT parent_uid, first_name FROM students WHERE id = ?")->execute([$id]);
-            $s = $this->db->query("SELECT parent_uid, first_name FROM students WHERE id = $id")->fetch();
-            if ($s) $this->notify($s['parent_uid'], 'achievement', "🎯 Objective completed!", "");
+            $stmt = $this->db->prepare("SELECT parent_uid, first_name FROM students WHERE id = ?");
+            $stmt->execute([$id]);
+            $s = $stmt->fetch();
+            if ($s) $this->notify($s['parent_uid'], 'achievement',
+                "🎯 {$s['first_name']} completed an objective!", '');
         }
         Response::ok(['updated' => true]);
     }

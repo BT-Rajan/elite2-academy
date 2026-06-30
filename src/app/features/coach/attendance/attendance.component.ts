@@ -7,7 +7,6 @@ import { AuthService } from '../../../core/services/auth.service';
 import { SessionService } from '../../../core/services/session.service';
 import { AttendanceService } from '../../../core/services/attendance.service';
 import { StudentService } from '../../../core/services/student.service';
-import { LoyaltyService } from '../../../core/services/loyalty.service';
 import { ClassSession, AttendanceRecord, Student, AttendanceStatus } from '../../../core/models';
 import { ATTENDANCE_LABELS } from '../../../core/utils';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -147,7 +146,6 @@ export class AttendanceComponent implements OnInit {
   private ss      = inject(SessionService);
   private as_     = inject(AttendanceService);
   private sts     = inject(StudentService);
-  private ls      = inject(LoyaltyService);
 
   sessions$!:  Observable<ClassSession[]>;
   students$!:  Observable<Student[]>;
@@ -219,13 +217,8 @@ export class AttendanceComponent implements OnInit {
       sessionId, studentId: String(student.id), status,
       markedBy: user.uid, markedAt: new Date() as any,
     });
-
-    // Award loyalty points for attendance
-    if (status === 'present' || status === 'late') {
-      const pts = status === 'present' ? 10 : 5;
-      await this.ls.award(student.parentUid, user.dojoId, pts, 'attendance',
-        `${status === 'present' ? 'Present' : 'Late'} at ${this.activeSession()?.className}`);
-    }
+    // Loyalty points are awarded server-side by AttendanceController::markAttendance()
+    // — do not award again here to avoid double-counting.
   }
 
   viewSession(s: ClassSession) {

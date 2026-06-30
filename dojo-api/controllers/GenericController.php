@@ -16,8 +16,12 @@ class GenericController {
 
     // ── Disciplines ───────────────────────────────────────────────────────────
     public function listDisciplines(): never {
-        $auth = AuthMiddleware::require();
-        $dojoId = $_GET['dojoId'] ?? $auth['dojoId'];
+        $dojoId = $_GET['dojoId'] ?? '';
+        if (!$dojoId) {
+            // Authenticated fallback — use auth dojoId if not passed explicitly
+            $auth   = AuthMiddleware::require();
+            $dojoId = $auth['dojoId'];
+        }
         $stmt = $this->db->prepare("SELECT * FROM disciplines WHERE dojo_id = ? ORDER BY name");
         $stmt->execute([$dojoId]);
         Response::ok($stmt->fetchAll());
@@ -115,7 +119,10 @@ class GenericController {
     }
     public function listMessages(int $threadId): never {
         AuthMiddleware::require();
-        $stmt = $this->db->prepare("SELECT * FROM messages WHERE thread_id = ? ORDER BY sent_at ASC LIMIT 100");
+        $stmt = $this->db->prepare("
+            SELECT id, thread_id, from_uid, from_name, from_role,
+                   body AS text, sent_at, read_at
+            FROM messages WHERE thread_id = ? ORDER BY sent_at ASC LIMIT 100");
         $stmt->execute([$threadId]);
         Response::ok($stmt->fetchAll());
     }
@@ -127,8 +134,9 @@ class GenericController {
         $this->db->prepare("UPDATE threads SET last_message=?, last_at=NOW(), unread_parent = unread_parent + IF(?='coach',1,0), unread_coach = unread_coach + IF(?='parent',1,0) WHERE id=?")
             ->execute([substr($b['text'] ?? '', 0, 200), $auth['role'], $auth['role'], $threadId]);
         // Notify recipient
-        $thread = $this->db->prepare("SELECT parent_uid, coach_uid FROM threads WHERE id = ?")->execute([$threadId]);
-        $t = $this->db->query("SELECT parent_uid, coach_uid FROM threads WHERE id = $threadId")->fetch();
+        $stmt = $this->db->prepare("SELECT parent_uid, coach_uid FROM threads WHERE id = ?");
+        $stmt->execute([$threadId]);
+        $t = $stmt->fetch();
         if ($t) {
             $recipientUid = $auth['role'] === 'coach' ? $t['parent_uid'] : $t['coach_uid'];
             $this->db->prepare("INSERT INTO notifications (uid, type, title, body) VALUES (?,?,?,?)")
@@ -152,6 +160,36 @@ class GenericController {
         $stmt->execute([$parentUid]);
         $row = $stmt->fetch();
         Response::ok($row ?: null);
+    }
+    public function awardLoyalty(string $parentUid): never {
+        $auth = AuthMiddleware::require();
+        AuthMiddleware::requireRole($auth, 'admin', 'coach');
+        $b      = $this->body();
+        $dojoId = $b['dojoId'] ?? $auth['dojoId'];
+        $amount = (int)($b['amount'] ?? 0);
+        $reason = $b['reason'] ?? 'manual';
+        $note   = $b['note']   ?? null;
+
+        $acct = $this->db->prepare("SELECT id, lifetime_points FROM loyalty_accounts WHERE parent_uid = ?");
+        $acct->execute([$parentUid]);
+        $row = $acct->fetch();
+
+        if ($row) {
+            $newLifetime = $row['lifetime_points'] + max(0, $amount);
+            $tier = $newLifetime >= 3000 ? 'platinum' : ($newLifetime >= 1500 ? 'gold' : ($newLifetime >= 500 ? 'silver' : 'bronze'));
+            $this->db->prepare("UPDATE loyalty_accounts SET points = points + ?, lifetime_points = ?, tier = ? WHERE id = ?")
+                ->execute([$amount, $newLifetime, $tier, $row['id']]);
+            $accountId = $row['id'];
+        } else {
+            $this->db->prepare("INSERT INTO loyalty_accounts (parent_uid, dojo_id, points, lifetime_points) VALUES (?,?,?,?)")
+                ->execute([$parentUid, $dojoId, $amount, max(0, $amount)]);
+            $accountId = $this->db->lastInsertId();
+        }
+
+        $this->db->prepare("INSERT INTO loyalty_transactions (account_id, amount, reason, note) VALUES (?,?,?,?)")
+            ->execute([$accountId, $amount, $reason, $note]);
+
+        Response::ok(['awarded' => $amount]);
     }
     public function listTransactions(string $parentUid): never {
         AuthMiddleware::require();

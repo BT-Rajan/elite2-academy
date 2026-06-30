@@ -5,7 +5,6 @@ import { RouterLink, ActivatedRoute } from '@angular/router';
 import { Observable, switchMap } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
 import { StudentService } from '../../../core/services/student.service';
-import { SessionService } from '../../../core/services/session.service';
 import { AttendanceService } from '../../../core/services/attendance.service';
 import { BeltService } from '../../../core/services/belt.service';
 import { Student, SessionComment, AttendanceRecord, BeltHistory, StudentObjective } from '../../../core/models';
@@ -256,7 +255,6 @@ export class StudentDetailComponent implements OnInit {
   private auth    = inject(AuthService);
   private route   = inject(ActivatedRoute);
   private sts     = inject(StudentService);
-  private ss      = inject(SessionService);
   private as_     = inject(AttendanceService);
   private bs      = inject(BeltService);
 
@@ -296,7 +294,7 @@ export class StudentDetailComponent implements OnInit {
     );
     this.route.params.subscribe(p => {
       const sid = p['id'];
-      this.comments$    = this.ss.comments$(sid) as any;
+      this.comments$    = this.sts.comments$(sid);
       this.attendance$  = this.as_.byStudent$(sid);
       this.beltHistory$ = this.bs.history$(sid);
       this.objectives$  = this.bs.objectives$(sid);
@@ -314,12 +312,10 @@ export class StudentDetailComponent implements OnInit {
 
   async saveSkills(student: Student) {
     const user = this.auth.currentUser()!;
-    const studentId = student.id;
+    const studentId = String(student.id);
 
-    // Save as a session comment with skill scores
-    const dummySessionId = `skill-${Date.now()}`;
-    await this.ss.addComment(dummySessionId, {
-      sessionId: dummySessionId, studentId,
+    await this.sts.addComment(studentId, {
+      studentId,
       coachUid: user.uid, coachName: user.displayName,
       comment: this.skillComment || 'Skill assessment updated.',
       skills: { ...this.editSkills } as any,
@@ -334,9 +330,8 @@ export class StudentDetailComponent implements OnInit {
   async addComment(studentId: string) {
     if (!this.newComment.trim()) return;
     const user = this.auth.currentUser()!;
-    const dummySessionId = `comment-${Date.now()}`;
-    await this.ss.addComment(dummySessionId, {
-      sessionId: dummySessionId, studentId,
+    await this.sts.addComment(studentId, {
+      studentId,
       coachUid: user.uid, coachName: user.displayName,
       comment: this.newComment, skills: {},
       createdAt: new Date() as any,

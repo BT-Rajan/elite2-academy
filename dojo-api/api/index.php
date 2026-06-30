@@ -45,6 +45,11 @@ try {
         if ($method === 'GET')  { (new StudentController)->objectives($id); }
         if ($method === 'POST') { (new StudentController)->addObjective($id); }
     }
+    if (preg_match('#^/students/(\d+)/comments$#', $uri, $m)) {
+        $id = (int)$m[1];
+        if ($method === 'GET')  { (new StudentController)->comments($id); }
+        if ($method === 'POST') { (new StudentController)->addComment($id); }
+    }
     if (preg_match('#^/students/(\d+)/objectives/(\d+)$#', $uri, $m)) {
         if ($method === 'PATCH') { (new StudentController)->updateObjective((int)$m[1], (int)$m[2]); }
     }
@@ -109,6 +114,9 @@ try {
     if (preg_match('#^/loyalty/([^/]+)$#', $uri, $m)) {
         $uid = $m[1];
         if ($method === 'GET') { $gc->getLoyalty($uid); }
+    }
+    if (preg_match('#^/loyalty/([^/]+)/award$#', $uri, $m)) {
+        if ($method === 'POST') { $gc->awardLoyalty($m[1]); }
     }
     if (preg_match('#^/loyalty/([^/]+)/transactions$#', $uri, $m)) {
         if ($method === 'GET') { $gc->listTransactions($m[1]); }

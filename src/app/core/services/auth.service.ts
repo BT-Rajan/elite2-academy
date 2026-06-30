@@ -29,11 +29,11 @@ export class AuthService {
   async login(email: string, password: string): Promise<void> {
     this.isLoading.set(true);
     try {
-      const res = await this.api.post<AuthResponse>('/auth/login', { email, password })
+      const res = await this.api.post<{ data: AuthResponse }>('/auth/login', { email, password })
         .toPromise();
-      if (!res) throw new Error('No response from server.');
-      this.storeSession(res);
-      this.redirectByRole(res.user.role);
+      if (!res?.data) throw new Error('No response from server.');
+      this.storeSession(res.data);
+      this.redirectByRole(res.data.user.role);
     } finally { this.isLoading.set(false); }
   }
 
@@ -43,12 +43,12 @@ export class AuthService {
   ): Promise<void> {
     this.isLoading.set(true);
     try {
-      const res = await this.api.post<AuthResponse>('/auth/register', {
+      const res = await this.api.post<{ data: AuthResponse }>('/auth/register', {
         email, password, displayName, role, dojoId,
       }).toPromise();
-      if (!res) throw new Error('No response from server.');
-      this.storeSession(res);
-      this.redirectByRole(res.user.role);
+      if (!res?.data) throw new Error('No response from server.');
+      this.storeSession(res.data);
+      this.redirectByRole(res.data.user.role);
     } finally { this.isLoading.set(false); }
   }
 

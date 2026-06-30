@@ -127,14 +127,14 @@ CREATE TABLE IF NOT EXISTS sessions (
 
 CREATE TABLE IF NOT EXISTS session_comments (
   id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  session_id INT UNSIGNED NOT NULL,
+  session_id INT UNSIGNED NULL,
   student_id INT UNSIGNED NOT NULL,
   coach_uid  VARCHAR(36) NOT NULL,
   coach_name VARCHAR(100) NOT NULL,
   comment    TEXT NOT NULL,
   skills     JSON,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
+  FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE SET NULL,
   INDEX idx_session (session_id),
   INDEX idx_student (student_id)
 ) ENGINE=InnoDB;

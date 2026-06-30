@@ -5,7 +5,6 @@ import { Observable, switchMap, of } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../../core/services/auth.service';
 import { StudentService } from '../../../core/services/student.service';
-import { SessionService } from '../../../core/services/session.service';
 import { AttendanceService } from '../../../core/services/attendance.service';
 import { BeltService } from '../../../core/services/belt.service';
 import { Student, SessionComment, AttendanceRecord, BeltHistory, StudentObjective } from '../../../core/models';
@@ -265,7 +264,6 @@ export class ChildProgressComponent implements OnInit {
   private auth  = inject(AuthService);
   private route = inject(ActivatedRoute);
   private sts   = inject(StudentService);
-  private ss    = inject(SessionService);
   private as_   = inject(AttendanceService);
   private bs    = inject(BeltService);
 
@@ -314,7 +312,7 @@ export class ChildProgressComponent implements OnInit {
   selectChild(id: string) {
     this.selectedId.set(id);
     this.student$     = this.sts.get$(id);
-    this.comments$    = this.ss.comments$(id) as any;
+    this.comments$    = this.sts.comments$(id);
     this.attendance$  = this.as_.byStudent$(id);
     this.beltHistory$ = this.bs.history$(id);
     this.objectives$  = this.bs.objectives$(id);
