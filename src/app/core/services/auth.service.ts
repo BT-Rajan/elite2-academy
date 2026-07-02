@@ -62,6 +62,13 @@ export class AuthService {
     await this.api.post('/auth/forgot-password', { email }).toPromise();
   }
 
+  /** Merge partial profile changes (name, phone, avatarUrl, etc.) into the cached session. */
+  updateCurrentUser(patch: Partial<UserProfile>): void {
+    const merged = { ...this.currentUser(), ...patch } as UserProfile;
+    localStorage.setItem('dojo_user', JSON.stringify(merged));
+    this.currentUser.set(merged);
+  }
+
   private storeSession(res: AuthResponse): void {
     localStorage.setItem('dojo_token', res.token);
     localStorage.setItem('dojo_user',  JSON.stringify(res.user));

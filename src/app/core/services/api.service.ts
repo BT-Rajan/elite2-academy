@@ -48,6 +48,18 @@ export class ApiService {
       .pipe(catchError(this.handleError));
   }
 
+  /**
+   * For file uploads (FormData). Deliberately omits Content-Type so the
+   * browser sets 'multipart/form-data; boundary=...' itself — setting it
+   * manually breaks the boundary and the server can't parse the upload.
+   */
+  upload<T>(path: string, formData: FormData): Observable<T> {
+    const token = localStorage.getItem('dojo_token');
+    const headers = new HttpHeaders(token ? { Authorization: `Bearer ${token}` } : {});
+    return this.http.post<T>(`${this.baseUrl}${path}`, formData, { headers })
+      .pipe(catchError(this.handleError));
+  }
+
   private handleError = (err: HttpErrorResponse): Observable<never> => {
     // status 0 means the browser never got an HTTP response at all — the
     // request was blocked (CORS) or the server was unreachable. This is

@@ -1,0 +1,13 @@
+# Uploaded avatar images live here. This directory must never execute PHP,
+# even if an attacker manages to get a .php file in via a naming trick.
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php8.c>
+    php_flag engine off
+</IfModule>
+<FilesMatch "\.ph(p[3457]?|t|tml)$">
+    Require all denied
+</FilesMatch>
+
+Options -Indexes

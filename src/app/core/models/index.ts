@@ -4,10 +4,16 @@
 
 export type UserRole = 'admin' | 'coach' | 'parent' | 'staff';
 
+export type Salutation = 'Mr' | 'Mrs' | 'Ms' | 'Mx' | 'Dr';
+
 export interface UserProfile {
   uid: string;
   email: string;
   displayName: string;
+  salutation?: Salutation | string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
   role: UserRole;
   avatarUrl?: string;
   dojoId: string;

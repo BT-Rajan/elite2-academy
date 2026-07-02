@@ -69,6 +69,14 @@ try {
     if ($uri === '/auth/reset-password' && $method === 'POST') { require_once __DIR__.'/../controllers/AuthController.php'; (new AuthController)->resetPassword(); }
     if ($uri === '/auth/me'             && $method === 'GET')  { require_once __DIR__.'/../controllers/AuthController.php'; (new AuthController)->me(); }
 
+    // ── Profile (self-service, all roles) ────────────────────────────────────
+    require_once __DIR__.'/../controllers/ProfileController.php';
+    if ($uri === '/profile'             && $method === 'GET')  { (new ProfileController)->get(); }
+    if ($uri === '/profile'             && $method === 'PUT')  { (new ProfileController)->update(); }
+    if ($uri === '/profile/photo'       && $method === 'POST') { (new ProfileController)->uploadPhoto(); }
+    if ($uri === '/profile/photo'       && $method === 'DELETE') { (new ProfileController)->deletePhoto(); }
+    if ($uri === '/profile/password'    && $method === 'POST') { (new ProfileController)->changePassword(); }
+
     // ── Students ──────────────────────────────────────────────────────────────
     require_once __DIR__.'/../controllers/StudentController.php';
     if ($uri === '/students'            && $method === 'GET')    { (new StudentController)->list(); }

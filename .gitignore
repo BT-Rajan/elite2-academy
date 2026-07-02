@@ -3,3 +3,5 @@ dist/
 .angular/
 .env
 *.env.local
+dojo-api/uploads/avatars/*
+!dojo-api/uploads/avatars/.gitkeep

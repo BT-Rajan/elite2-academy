@@ -9,6 +9,7 @@ const NAV = [
   { path: '/staff/students',  icon: '🧒', label: 'Students' },
   { path: '/staff/schedule',  icon: '📅', label: 'Schedule' },
   { path: '/staff/notifications', icon: '🔔', label: 'Notifications' },
+  { path: '/staff/profile',   icon: '👤', label: 'My Profile' },
 ];
 
 @Component({
@@ -40,7 +41,9 @@ const NAV = [
           <span class="topbar__title">Staff Portal</span>
           <div class="topbar__right">
             <span class="text-muted text-sm">{{ user()?.displayName }}</span>
-            <dojo-avatar [name]="user()?.displayName || 'S'" size="sm"></dojo-avatar>
+            <a routerLink="/staff/profile" title="My Profile" style="cursor:pointer">
+              <dojo-avatar [name]="user()?.displayName || 'S'" [src]="user()?.avatarUrl" size="sm"></dojo-avatar>
+            </a>
           </div>
         </header>
         <div class="page"><router-outlet /></div>

@@ -11,6 +11,7 @@ const NAV = [
   { path: '/admin/disciplines',icon: '🥋', label: 'Disciplines' },
   { path: '/admin/reports',   icon: '📊', label: 'Reports' },
   { path: '/admin/settings',  icon: '⚙',  label: 'Settings' },
+  { path: '/admin/profile',   icon: '👤', label: 'My Profile' },
 ];
 
 @Component({
@@ -40,7 +41,9 @@ const NAV = [
         <header class="topbar">
           <span class="topbar__title">Admin Portal</span>
           <div class="topbar__right">
-            <dojo-avatar [name]="user()?.displayName || 'A'" size="sm"></dojo-avatar>
+            <a routerLink="/admin/profile" title="My Profile" style="cursor:pointer">
+              <dojo-avatar [name]="user()?.displayName || 'A'" [src]="user()?.avatarUrl" size="sm"></dojo-avatar>
+            </a>
           </div>
         </header>
         <div class="page"><router-outlet /></div>

@@ -40,12 +40,15 @@ class AuthController {
 
         $uid  = $this->uuid();
         $hash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
+        $nameParts = preg_split('/\s+/', $displayName, 2);
+        $firstName = $nameParts[0] ?? $displayName;
+        $lastName  = $nameParts[1] ?? '';
 
         $stmt = $this->db->prepare("
-            INSERT INTO users (uid, email, password, display_name, role, dojo_id)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO users (uid, email, password, display_name, first_name, last_name, role, dojo_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $stmt->execute([$uid, $email, $hash, $displayName, $role, $dojoId]);
+        $stmt->execute([$uid, $email, $hash, $displayName, $firstName, $lastName, $role, $dojoId]);
 
         // Auto-create dojo if it doesn't exist yet
         $this->db->prepare("INSERT IGNORE INTO dojos (id, name) VALUES (?, ?)")
@@ -177,6 +180,10 @@ class AuthController {
             'uid'         => $row['uid'],
             'email'       => $row['email'],
             'displayName' => $row['display_name'],
+            'salutation'  => $row['salutation']  ?? null,
+            'firstName'   => $row['first_name']  ?? null,
+            'lastName'    => $row['last_name']   ?? null,
+            'phone'       => $row['phone']       ?? null,
             'role'        => $row['role'],
             'dojoId'      => $row['dojo_id'],
             'avatarUrl'   => $row['avatar_url'] ?? null,

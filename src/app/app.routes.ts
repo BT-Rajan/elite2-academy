@@ -26,6 +26,7 @@ export const routes: Routes = [
       { path: 'disciplines', loadComponent: () => import('./features/admin/disciplines/disciplines.component').then(m => m.DisciplinesComponent) },
       { path: 'reports',     loadComponent: () => import('./features/admin/reports/reports.component').then(m => m.ReportsComponent) },
       { path: 'settings',    loadComponent: () => import('./features/admin/settings/admin-settings.component').then(m => m.AdminSettingsComponent) },
+      { path: 'profile',     loadComponent: () => import('./features/profile/profile.component').then(m => m.ProfileComponent) },
     ]
   },
 
@@ -42,6 +43,7 @@ export const routes: Routes = [
       { path: 'students',      loadComponent: () => import('./features/coach/student-detail/student-list.component').then(m => m.StudentListComponent) },
       { path: 'students/:id',  loadComponent: () => import('./features/coach/student-detail/student-detail.component').then(m => m.StudentDetailComponent) },
       { path: 'messages',      loadComponent: () => import('./features/coach/messages/coach-messages.component').then(m => m.CoachMessagesComponent) },
+      { path: 'profile',       loadComponent: () => import('./features/profile/profile.component').then(m => m.ProfileComponent) },
     ]
   },
 
@@ -58,6 +60,7 @@ export const routes: Routes = [
       { path: 'messages',        loadComponent: () => import('./features/parent/messages/parent-messages.component').then(m => m.ParentMessagesComponent) },
       { path: 'loyalty',         loadComponent: () => import('./features/parent/loyalty/loyalty.component').then(m => m.LoyaltyComponent) },
       { path: 'notifications',   loadComponent: () => import('./features/parent/notifications/notifications.component').then(m => m.NotificationsComponent) },
+      { path: 'profile',         loadComponent: () => import('./features/profile/profile.component').then(m => m.ProfileComponent) },
     ]
   },
 
@@ -72,6 +75,7 @@ export const routes: Routes = [
       { path: 'students',      loadComponent: () => import('./features/staff/students/staff-students.component').then(m => m.StaffStudentsComponent) },
       { path: 'schedule',      loadComponent: () => import('./features/staff/schedule/staff-schedule.component').then(m => m.StaffScheduleComponent) },
       { path: 'notifications', loadComponent: () => import('./features/parent/notifications/notifications.component').then(m => m.NotificationsComponent) },
+      { path: 'profile',       loadComponent: () => import('./features/profile/profile.component').then(m => m.ProfileComponent) },
     ]
   },
 

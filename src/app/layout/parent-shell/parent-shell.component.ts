@@ -31,10 +31,15 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
             <span class="nav-icon">🔔</span> Notifications
             <span *ngIf="unreadNotifs() > 0" class="nav-badge">{{ unreadNotifs() }}</span>
           </a>
+          <a routerLink="/parent/profile" routerLinkActive="active" class="nav-item">
+            <span class="nav-icon">👤</span> My Profile
+          </a>
         </nav>
         <div class="sidebar__footer">
           <div class="sidebar-user">
-            <dojo-avatar [name]="user()?.displayName || 'P'" size="sm"></dojo-avatar>
+            <a routerLink="/parent/profile" title="My Profile">
+              <dojo-avatar [name]="user()?.displayName || 'P'" [src]="user()?.avatarUrl" size="sm"></dojo-avatar>
+            </a>
             <div style="flex:1;min-width:0;overflow:hidden">
               <div class="sidebar-user-name">{{ user()?.displayName }}</div>
               <div class="sidebar-user-role">Parent</div>
@@ -49,7 +54,9 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
         <header class="topbar">
           <span class="topbar__title">Parent Portal</span>
           <div class="topbar__right">
-            <dojo-avatar [name]="user()?.displayName || 'P'" size="sm"></dojo-avatar>
+            <a routerLink="/parent/profile" title="My Profile">
+              <dojo-avatar [name]="user()?.displayName || 'P'" [src]="user()?.avatarUrl" size="sm"></dojo-avatar>
+            </a>
           </div>
         </header>
         <div class="page"><router-outlet /></div>
