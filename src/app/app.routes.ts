@@ -61,6 +61,20 @@ export const routes: Routes = [
     ]
   },
 
+  // ── Staff ─────────────────────────────────────────────────────────────────
+  {
+    path: 'staff',
+    canActivate: [roleGuard('staff', 'admin')],
+    loadComponent: () => import('./layout/staff-shell/staff-shell.component').then(m => m.StaffShellComponent),
+    children: [
+      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+      { path: 'dashboard',     loadComponent: () => import('./features/staff/dashboard/staff-dashboard.component').then(m => m.StaffDashboardComponent) },
+      { path: 'students',      loadComponent: () => import('./features/staff/students/staff-students.component').then(m => m.StaffStudentsComponent) },
+      { path: 'schedule',      loadComponent: () => import('./features/staff/schedule/staff-schedule.component').then(m => m.StaffScheduleComponent) },
+      { path: 'notifications', loadComponent: () => import('./features/parent/notifications/notifications.component').then(m => m.NotificationsComponent) },
+    ]
+  },
+
   // ── Public website ───────────────────────────────────────────────────────
   {
     path: 'public',

@@ -79,6 +79,7 @@ export class AuthService {
       admin:  '/admin/dashboard',
       coach:  '/coach/dashboard',
       parent: '/parent/dashboard',
+      staff:  '/staff/dashboard',
     };
     this.router.navigate([map[role] ?? '/auth/login']);
   }

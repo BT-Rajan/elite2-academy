@@ -12,7 +12,7 @@ import { BadgeComponent } from '../../../shared/components/badge/badge.component
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
 
-type View = 'coaches' | 'parents' | 'invite';
+type View = 'coaches' | 'staff' | 'parents' | 'invite';
 
 @Component({
   selector: 'app-staff',
@@ -29,6 +29,9 @@ type View = 'coaches' | 'parents' | 'invite';
     <div class="tabs mb-4">
       <button class="tab-btn" [class.active]="activeView() === 'coaches'" (click)="activeView.set('coaches')">
         👥 Coaches ({{ (coaches$ | async)?.length ?? 0 }})
+      </button>
+      <button class="tab-btn" [class.active]="activeView() === 'staff'" (click)="activeView.set('staff')">
+        🗂️ Staff ({{ (staff$ | async)?.length ?? 0 }})
       </button>
       <button class="tab-btn" [class.active]="activeView() === 'parents'" (click)="activeView.set('parents')">
         👨‍👩‍👧 Parents ({{ (parents$ | async)?.length ?? 0 }})
@@ -116,6 +119,36 @@ type View = 'coaches' | 'parents' | 'invite';
       </div>
     </ng-container>
 
+    <!-- Staff -->
+    <ng-container *ngIf="activeView() === 'staff'">
+      <div class="card mb-4" style="padding:12px 16px">
+        <input class="input" [(ngModel)]="search" placeholder="🔍 Search staff…" style="max-width:320px">
+      </div>
+      <div class="card">
+        <div *ngIf="staff$ | async as staff">
+          <dojo-empty-state *ngIf="staff.length === 0"
+            icon="🗂️" title="No staff yet"
+            subtitle="Invite front-desk or office staff using the button above.">
+          </dojo-empty-state>
+          <table *ngIf="staff.length > 0">
+            <thead><tr><th>Staff Member</th><th>Email</th><th>Joined</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let s of filterUsers(staff)">
+                <td>
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <dojo-avatar [name]="s.displayName" size="sm"></dojo-avatar>
+                    <div style="font-weight:600">{{ s.displayName }}</div>
+                  </div>
+                </td>
+                <td class="text-muted">{{ s.email }}</td>
+                <td class="text-muted">{{ s.createdAt | date:'MMM y' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </ng-container>
+
     <!-- Parents -->
     <ng-container *ngIf="activeView() === 'parents'">
       <div class="card mb-4" style="padding:12px 16px">
@@ -175,6 +208,7 @@ type View = 'coaches' | 'parents' | 'invite';
             <label>Role to invite</label>
             <select class="select" [(ngModel)]="inviteRole">
               <option value="coach">Coach</option>
+              <option value="staff">Staff</option>
               <option value="parent">Parent</option>
             </select>
           </div>
@@ -207,6 +241,7 @@ export class StaffComponent implements OnInit {
   private sts   = inject(StudentService);
 
   coaches$!: Observable<UserProfile[]>;
+  staff$!: Observable<UserProfile[]>;
   parents$!: Observable<UserProfile[]>;
   students$!: Observable<Student[]>;
 
@@ -222,6 +257,7 @@ export class StaffComponent implements OnInit {
   ngOnInit() {
     const dojoId = this.auth.currentUser()!.dojoId;
     this.coaches$  = this.us.coaches$(dojoId);
+    this.staff$    = this.us.staff$(dojoId);
     this.parents$  = this.us.parents$(dojoId);
     this.students$ = this.sts.byDojo$(dojoId);
     this.students$.subscribe(s => this._studentList = s);

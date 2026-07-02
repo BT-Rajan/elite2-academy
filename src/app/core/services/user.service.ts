@@ -20,4 +20,5 @@ export class UserService {
 
   coaches$(dojoId: string) { return this.byRole$(dojoId, 'coach'); }
   parents$(dojoId: string) { return this.byRole$(dojoId, 'parent'); }
+  staff$(dojoId: string)   { return this.byRole$(dojoId, 'staff'); }
 }

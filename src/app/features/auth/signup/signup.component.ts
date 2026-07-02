@@ -39,6 +39,7 @@ import { UserRole } from '../../../core/models';
           <select class="select" [(ngModel)]="role">
             <option value="parent">Parent</option>
             <option value="coach">Coach</option>
+            <option value="staff">Staff</option>
             <option value="admin">Admin</option>
           </select>
         </div>

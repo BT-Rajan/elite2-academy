@@ -2,7 +2,7 @@
 //  Central model definitions — import from here everywhere, never re-declare
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type UserRole = 'admin' | 'coach' | 'parent';
+export type UserRole = 'admin' | 'coach' | 'parent' | 'staff';
 
 export interface UserProfile {
   uid: string;

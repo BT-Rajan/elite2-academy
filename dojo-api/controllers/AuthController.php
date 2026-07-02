@@ -30,7 +30,7 @@ class AuthController {
             Response::error('Invalid email address.');
         if (strlen($password) < 6)
             Response::error('Password must be at least 6 characters.');
-        if (!in_array($role, ['admin','coach','parent'], true))
+        if (!in_array($role, ['admin','coach','parent','staff'], true))
             Response::error('Invalid role.');
 
         // Check duplicate
