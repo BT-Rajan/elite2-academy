@@ -11,7 +11,16 @@
 
 ## 1. Backend (PHP API on XAMPP)
 
-Copy `dojo-api/` folder to `C:\xampp\htdocs\dojo-api\`
+You can install this **either** of two ways — the router now auto-detects
+its own path, so both work without editing PHP code:
+
+**Option A — whole repo copied to htdocs** (e.g. `C:\xampp\htdocs\elite2-academy\`):
+API lives at `http://localhost/elite2-academy/dojo-api/api`
+
+**Option B — just the `dojo-api/` folder copied to `C:\xampp\htdocs\dojo-api\`:**
+API lives at `http://localhost/dojo-api/api`
+
+Whichever you use, set `apiUrl` in `src/environments/environment.ts` to match.
 
 ```bash
 # Create database
@@ -32,9 +41,9 @@ Generate a secure JWT secret:
 php -r "echo bin2hex(random_bytes(32));"
 ```
 
-Test the API:
+Test the API (adjust the path to match your install option above):
 ```
-GET http://localhost/dojo-api/api/health
+GET http://localhost/elite2-academy/dojo-api/api/health
 → {"data":{"status":"ok"}}
 ```
 
@@ -95,7 +104,8 @@ sendmail_from = noreply@yourdojo.com
 ```typescript
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost/dojo-api/api',
+  // match whichever install option you used above
+  apiUrl: 'http://localhost/elite2-academy/dojo-api/api',
 };
 ```
 

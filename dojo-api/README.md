@@ -67,10 +67,16 @@ a network/CORS-layer failure, not a login-credentials problem. Check in order:
 2. **PHP 8.1+?** Run `php -v` in the XAMPP `php` folder. Older versions will
    fail to even load `Response.php`. `index.php` now checks this itself and
    returns a clear JSON error instead of silently failing.
-3. **Correct folder/URL?** This folder must be at `C:\xampp\htdocs\dojo-api\`
-   so that `http://localhost/dojo-api/api/health` returns
-   `{"data":{"status":"ok",...}}`. If you get a 404 or the browser can't
-   connect, the folder is in the wrong place or Apache isn't serving it.
+3. **Correct folder/URL?** The router (`api/index.php`) now auto-detects its
+   own path, so it works whether you copied just this folder to
+   `htdocs/dojo-api/` or the whole repo to `htdocs/<repo-name>/`. Either way,
+   confirm `src/environments/environment.ts`'s `apiUrl` matches exactly where
+   `dojo-api/api/index.php` ends up being served from — test it directly:
+   `http://localhost/<path-to-dojo-api>/api/health` should return
+   `{"data":{"status":"ok",...}}`. A mismatch here is the most common cause
+   of "HTTP 0" / "Can't reach the API": the OPTIONS preflight 404s with no
+   CORS headers, which the browser reports as a network failure, not a
+   normal HTTP error.
 4. **`.htaccess` being read?** In `httpd.conf` / `httpd-xampp.conf`, the
    `<Directory "C:/xampp/htdocs">` block needs `AllowOverride All` (XAMPP
    ships with this by default, but custom installs sometimes set it to

@@ -51,8 +51,13 @@ require_once __DIR__ . '/../core/Response.php';
 // ── Route table ────────────────────────────────────────────────────────────────
 $method = $_SERVER['REQUEST_METHOD'];
 $uri    = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-// Strip /dojo-api/api prefix
-$uri    = preg_replace('#^/dojo-api/api#', '', $uri);
+// Strip whatever base path this script actually lives under (e.g. "/dojo-api/api"
+// if copied to htdocs/dojo-api, or "/elite2-academy/dojo-api/api" if the whole
+// repo was copied to htdocs/elite2-academy) — works no matter where it's deployed.
+$scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
+if ($scriptDir !== '/' && str_starts_with($uri, $scriptDir)) {
+    $uri = substr($uri, strlen($scriptDir));
+}
 $uri    = rtrim($uri, '/') ?: '/';
 
 try {

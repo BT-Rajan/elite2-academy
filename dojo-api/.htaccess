@@ -1,10 +1,9 @@
 Options -Indexes
 RewriteEngine On
-RewriteBase /dojo-api/
 
 # Pass Authorization header — XAMPP strips it by default
 RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 RewriteRule .* - [E=REDIRECT_HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
-# Route all /api/* to api/index.php
+# Route all /api/* to api/index.php (relative — works at any install path)
 RewriteRule ^api/(.*)$ api/index.php [L,QSA]
