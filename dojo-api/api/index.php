@@ -1,12 +1,50 @@
 <?php
 declare(strict_types=1);
 
+// ── CORS — must be the very first thing that runs, before anything that ────
+//    could fatal (wrong PHP version, missing extension, bad include, etc).
+//    If these headers never get sent, the browser reports a network-level
+//    failure (fetch/XHR status 0) instead of a real HTTP error, which is
+//    what "HTTP 0: Unknown Error" on the login page almost always means.
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE,OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 header('Content-Type: application/json; charset=utf-8');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
+
+// ── PHP version guard ───────────────────────────────────────────────────────
+//    Response.php uses `never` return types and array_is_list(), both of
+//    which require PHP 8.1+. On older PHP these cause a fatal compile error
+//    that (depending on server config) can produce an empty/broken response
+//    with no CORS headers reaching the browser — surfacing as "HTTP 0".
+if (PHP_VERSION_ID < 80100) {
+    http_response_code(500);
+    echo json_encode([
+        'error'   => true,
+        'message' => 'Server requires PHP 8.1 or higher. Running ' . PHP_VERSION . '. '
+                   . 'Update XAMPP\'s PHP version or switch php.exe in your PATH.',
+    ]);
+    exit;
+}
+
+// ── Fatal-error safety net ──────────────────────────────────────────────────
+//    Guarantees the client always gets valid JSON (with CORS headers already
+//    sent above) instead of a blank page / half-sent response on any
+//    uncaught fatal error, parse error, or missing extension.
+register_shutdown_function(function () {
+    $err = error_get_last();
+    if ($err && in_array($err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
+        if (!headers_sent()) {
+            http_response_code(500);
+            header('Content-Type: application/json; charset=utf-8');
+        }
+        echo json_encode([
+            'error'   => true,
+            'message' => 'Server error: ' . $err['message'],
+        ]);
+    }
+});
 
 require_once __DIR__ . '/../core/Response.php';
 
