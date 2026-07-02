@@ -64,7 +64,7 @@ export class LoginComponent {
     try {
       await this.auth.login(this.email, this.password);
     } catch (e: any) {
-      this.error.set(e.message?.replace('Firebase: ', '') ?? 'Login failed.');
+      this.error.set(e.message ?? 'Login failed.');
     } finally {
       this.loading.set(false);
     }

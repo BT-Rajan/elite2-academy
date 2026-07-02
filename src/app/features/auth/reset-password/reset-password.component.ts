@@ -56,7 +56,7 @@ export class ResetPasswordComponent {
       await this.auth.resetPassword(this.email);
       this.sent.set(true);
     } catch (e: any) {
-      this.error.set(e.message?.replace('Firebase: ', '') ?? 'Failed.');
+      this.error.set(e.message ?? 'Failed.');
     } finally { this.loading.set(false); }
   }
 }

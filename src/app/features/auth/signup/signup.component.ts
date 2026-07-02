@@ -88,7 +88,7 @@ export class SignupComponent {
         this.role, this.dojoId
       );
     } catch (e: any) {
-      this.error.set(e.message?.replace('Firebase: ', '') ?? 'Signup failed.');
+      this.error.set(e.message ?? 'Signup failed.');
     } finally { this.loading.set(false); }
   }
 }
