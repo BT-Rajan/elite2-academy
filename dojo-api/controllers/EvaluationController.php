@@ -245,15 +245,32 @@ class EvaluationController {
         $seminarOk = $student['seminar_points'] >= (int)$belt['seminar_points_required'];
         if (!$seminarOk) $allPass = false;
 
+        $stripesRequired = $this->parseStripeRequirement($belt['bjj_stripe_label']);
+        $stripesOk = (int)$student['bjj_stripes'] >= $stripesRequired;
+        if (!$stripesOk) $allPass = false;
+
         return [
             'isReady' => $allPass,
             'tracks' => $result,
             'seminarPoints' => (int)$student['seminar_points'],
             'seminarPointsRequired' => (int)$belt['seminar_points_required'],
             'bjjStripes' => (int)$student['bjj_stripes'],
+            'bjjStripesRequired' => $stripesRequired,
             'bjjStripeLabel' => $belt['bjj_stripe_label'],
             'currentBelt' => $belt,
         ];
+    }
+
+    // BJJ stripe requirements are stored as a human-readable label per the
+    // roadmap doc (e.g. "1 × White", "2 × White", "Belt is marker", "None")
+    // rather than a plain number, since the label also carries which BJJ
+    // rank the stripe is on. The count needed to promote is the leading
+    // number; "None" / "Belt is marker" require zero stripes on this belt.
+    private function parseStripeRequirement(?string $label): int {
+        if ($label && preg_match('/^(\d+)/', trim($label), $m)) {
+            return (int)$m[1];
+        }
+        return 0;
     }
 
     private function getStudent(int $id): array {

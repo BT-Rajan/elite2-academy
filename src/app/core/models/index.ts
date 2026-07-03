@@ -128,6 +128,7 @@ export interface PromotionReadiness {
   seminarPoints: number;
   seminarPointsRequired: number;
   bjjStripes: number;
+  bjjStripesRequired: number;
   bjjStripeLabel?: string;
   currentBelt: Belt;
 }

@@ -250,6 +250,13 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
                   {{ r.seminarPoints }} / {{ r.seminarPointsRequired }}
                 </span>
               </div>
+              <div class="progress-item">
+                <span class="progress-icon">🥋</span>
+                <span class="text-muted text-sm">BJJ Stripes ({{ r.bjjStripeLabel }})</span>
+                <span class="badge" [class.badge--success]="r.bjjStripes >= r.bjjStripesRequired" [class.badge--gray]="r.bjjStripes < r.bjjStripesRequired">
+                  {{ r.bjjStripes }} / {{ r.bjjStripesRequired }}
+                </span>
+              </div>
             </div>
             <div *ngIf="r.isReady" class="ready-banner">🎉 All requirements met — ready for promotion!</div>
           </div>
