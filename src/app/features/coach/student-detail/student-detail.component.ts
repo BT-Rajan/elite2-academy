@@ -28,7 +28,7 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
             PageHeaderComponent, AvatarComponent, SkillBarComponent,
             BadgeComponent, EmptyStateComponent, RoadmapComponent, TimeAgoPipe],
   template: `
-    <a routerLink="/coach/students" class="btn btn--ghost btn--sm mb-4">← Back to students</a>
+    <a [routerLink]="[basePath(), 'students']" class="btn btn--ghost btn--sm mb-4">← Back to students</a>
 
     <ng-container *ngIf="student$ | async as s">
       <!-- Header -->
@@ -438,6 +438,10 @@ export class StudentDetailComponent implements OnInit {
   ];
 
   private studentId = '';
+
+  // This detail page is mounted under both /coach/students/:id and
+  // /admin/students/:id — link back to whichever list matches.
+  basePath = () => this.auth.currentUser()?.role === 'admin' ? '/admin' : '/coach';
 
   ngOnInit() {
     this.student$ = this.route.params.pipe(

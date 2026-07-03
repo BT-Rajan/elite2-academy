@@ -58,7 +58,7 @@ import { calcAge } from '../../../core/utils';
               </td>
               <td class="text-muted">{{ s.enrolledAt | date:'MMM y' }}</td>
               <td>
-                <a [routerLink]="['/coach/students', s.id]" class="btn btn--ghost btn--sm">View →</a>
+                <a [routerLink]="[basePath(), 'students', s.id]" class="btn btn--ghost btn--sm">View →</a>
               </td>
             </tr>
           </tbody>
@@ -74,6 +74,10 @@ export class StudentListComponent implements OnInit {
   students$!: Observable<Student[]>;
   search = '';
   age = (s: Student) => s.dob ? calcAge(new Date(s.dob)) : '—';
+
+  // This list is mounted under both /coach/students and /admin/students —
+  // link to whichever detail route matches where the user actually is.
+  basePath = () => this.auth.currentUser()?.role === 'admin' ? '/admin' : '/coach';
 
   ngOnInit() {
     this.students$ = this.sts.byDojo$(this.auth.currentUser()!.dojoId);

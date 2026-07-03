@@ -22,6 +22,8 @@ export const routes: Routes = [
     children: [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       { path: 'dashboard',   loadComponent: () => import('./features/admin/dashboard/admin-dashboard.component').then(m => m.AdminDashboardComponent) },
+      { path: 'students',    loadComponent: () => import('./features/coach/student-detail/student-list.component').then(m => m.StudentListComponent) },
+      { path: 'students/:id',loadComponent: () => import('./features/coach/student-detail/student-detail.component').then(m => m.StudentDetailComponent) },
       { path: 'staff',       loadComponent: () => import('./features/admin/staff/staff.component').then(m => m.StaffComponent) },
       { path: 'disciplines', loadComponent: () => import('./features/admin/disciplines/disciplines.component').then(m => m.DisciplinesComponent) },
       { path: 'reports',     loadComponent: () => import('./features/admin/reports/reports.component').then(m => m.ReportsComponent) },
