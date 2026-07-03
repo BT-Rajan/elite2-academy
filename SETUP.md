@@ -26,17 +26,19 @@ Whichever you use, set `apiUrl` in `src/environments/environment.ts` to match.
 # Create database
 mysql -u root dojo_platform < database/schema.sql
 
-# Seed first admin
+# Seed a full test dataset: the Elita curriculum roadmap (8 belts ×
+# Striking/Grappling/Self-Defense syllabus), a second plain single-track
+# discipline, every role (admin/head coach/coach/staff/3 parents), 5
+# students in varying states of progress, attendance history, coach
+# notes, messaging, loyalty, and notifications. Safe to re-run.
 php database/seed.php
-
-# Optional — seed the Elita Academy "One Belt, One Stripe, Three Arts"
-# curriculum roadmap (8 belts × Striking/Grappling/Self-Defense syllabus)
-php database/seed_curriculum_elita.php
 
 # If you're adding the curriculum roadmap feature to an existing database
 # instead of a fresh install, run this instead of schema.sql:
 mysql -u root dojo_platform < database/migrate_curriculum_v1.sql
 ```
+
+`seed.php` prints every test login (with passwords) when it finishes.
 
 Edit `config.php`:
 ```php
