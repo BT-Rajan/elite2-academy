@@ -5,21 +5,22 @@ CREATE DATABASE IF NOT EXISTS dojo_platform CHARACTER SET utf8mb4 COLLATE utf8mb
 USE dojo_platform;
 
 CREATE TABLE IF NOT EXISTS users (
-  id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  uid          VARCHAR(36) NOT NULL UNIQUE,
-  email        VARCHAR(120) NOT NULL UNIQUE,
-  password     VARCHAR(255) NOT NULL,
-  display_name VARCHAR(100) NOT NULL,
-  salutation   VARCHAR(10),
-  first_name   VARCHAR(60),
-  last_name    VARCHAR(60),
-  role         ENUM('admin','coach','parent','staff') NOT NULL,
-  dojo_id      VARCHAR(50) NOT NULL,
-  avatar_url   VARCHAR(255),
-  phone        VARCHAR(30),
-  is_active    TINYINT(1) NOT NULL DEFAULT 1,
-  created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  uid           VARCHAR(36) NOT NULL UNIQUE,
+  email         VARCHAR(120) NOT NULL UNIQUE,
+  password      VARCHAR(255) NOT NULL,
+  display_name  VARCHAR(100) NOT NULL,
+  salutation    VARCHAR(10),
+  first_name    VARCHAR(60),
+  last_name     VARCHAR(60),
+  role          ENUM('admin','coach','parent','staff') NOT NULL,
+  is_head_coach TINYINT(1) NOT NULL DEFAULT 0,
+  dojo_id       VARCHAR(50) NOT NULL,
+  avatar_url    VARCHAR(255),
+  phone         VARCHAR(30),
+  is_active     TINYINT(1) NOT NULL DEFAULT 1,
+  created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_dojo_role (dojo_id, role)
 ) ENGINE=InnoDB;
 
@@ -45,17 +46,40 @@ CREATE TABLE IF NOT EXISTS disciplines (
   INDEX idx_dojo (dojo_id)
 ) ENGINE=InnoDB;
 
+-- `belts` doubles as the curriculum "roadmap" row for a discipline. For a
+-- classic single-track discipline only name/color/sort_order/min_classes/
+-- min_score are used. For a multi-track discipline (e.g. Elita's integrated
+-- Kaju + Kickboxing + BJJ + Self-Defense program) the three curriculum_*
+-- columns describe the parallel-track requirements attached to that belt.
 CREATE TABLE IF NOT EXISTS belts (
-  id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  discipline_id INT UNSIGNED NOT NULL,
-  name          VARCHAR(60) NOT NULL,
-  color_hex     VARCHAR(10) NOT NULL DEFAULT '#ffffff',
-  sort_order    TINYINT UNSIGNED NOT NULL DEFAULT 1,
-  min_classes   SMALLINT UNSIGNED NOT NULL DEFAULT 0,
-  min_score     TINYINT UNSIGNED NOT NULL DEFAULT 0,
-  created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  id                      INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  discipline_id           INT UNSIGNED NOT NULL,
+  name                    VARCHAR(60) NOT NULL,
+  color_hex               VARCHAR(10) NOT NULL DEFAULT '#ffffff',
+  sort_order              TINYINT UNSIGNED NOT NULL DEFAULT 1,
+  min_classes             SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+  min_score               TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  kickboxing_level        VARCHAR(30) NULL,   -- e.g. "Beginner", "Intermediate", "Advanced", "Expert"
+  bjj_stripe_label        VARCHAR(60) NULL,   -- e.g. "1 × White", "Belt is marker", "None"
+  seminar_points_required SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+  created_at              DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (discipline_id) REFERENCES disciplines(id) ON DELETE CASCADE,
   INDEX idx_discipline (discipline_id, sort_order)
+) ENGINE=InnoDB;
+
+-- Per-belt syllabus text for each of the three parallel tracks. Lets admins
+-- edit the curriculum content (what's actually taught/tested) without
+-- touching code.
+CREATE TABLE IF NOT EXISTS curriculum_syllabus (
+  id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  belt_id     INT UNSIGNED NOT NULL,
+  track       ENUM('striking','grappling','selfdefense') NOT NULL,
+  title       VARCHAR(150) NOT NULL,
+  description TEXT,
+  sort_order  TINYINT UNSIGNED NOT NULL DEFAULT 1,
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (belt_id) REFERENCES belts(id) ON DELETE CASCADE,
+  INDEX idx_belt_track (belt_id, track)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS students (
@@ -69,6 +93,8 @@ CREATE TABLE IF NOT EXISTS students (
   avatar_url      VARCHAR(255),
   discipline_id   INT UNSIGNED,
   current_belt_id INT UNSIGNED,
+  bjj_stripes     TINYINT UNSIGNED NOT NULL DEFAULT 0,  -- stripes earned on the current belt
+  seminar_points  SMALLINT UNSIGNED NOT NULL DEFAULT 0, -- toward current belt's seminar_points_required
   enrolled_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   is_active       TINYINT(1) NOT NULL DEFAULT 1,
   INDEX idx_dojo   (dojo_id),
@@ -80,12 +106,51 @@ CREATE TABLE IF NOT EXISTS students (
 CREATE TABLE IF NOT EXISTS belt_history (
   id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   student_id INT UNSIGNED NOT NULL,
+  belt_id    INT UNSIGNED NULL,
   belt_name  VARCHAR(60) NOT NULL,
   awarded_by VARCHAR(100) NOT NULL,
   notes      TEXT,
   awarded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+  FOREIGN KEY (belt_id)    REFERENCES belts(id)     ON DELETE SET NULL,
   INDEX idx_student (student_id)
+) ENGINE=InnoDB;
+
+-- A coach's per-track evaluation of a student against the belt they're
+-- currently working toward. Promotion aggregates the three tracks. A head
+-- coach (users.is_head_coach = 1) may overrule any evaluating coach's call.
+CREATE TABLE IF NOT EXISTS student_evaluations (
+  id                 INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  student_id         INT UNSIGNED NOT NULL,
+  belt_id            INT UNSIGNED NOT NULL,   -- belt being evaluated for
+  track              ENUM('striking','grappling','selfdefense') NOT NULL,
+  result             ENUM('pass','fail') NOT NULL,
+  notes              TEXT,
+  coach_uid          VARCHAR(36) NOT NULL,
+  coach_name         VARCHAR(100) NOT NULL,
+  evaluated_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  overruled_by       VARCHAR(36) NULL,
+  overruled_by_name  VARCHAR(100) NULL,
+  overrule_result    ENUM('pass','fail') NULL,
+  overrule_notes     TEXT NULL,
+  overruled_at       DATETIME NULL,
+  FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+  FOREIGN KEY (belt_id)    REFERENCES belts(id)     ON DELETE CASCADE,
+  INDEX idx_student_belt (student_id, belt_id)
+) ENGINE=InnoDB;
+
+-- Audit trail for seminar points (Self-Defense & Traditional track), which
+-- accumulate toward a belt's seminar_points_required and reset on promotion.
+CREATE TABLE IF NOT EXISTS seminar_points_log (
+  id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  student_id      INT UNSIGNED NOT NULL,
+  points          SMALLINT NOT NULL,
+  reason          VARCHAR(150) NOT NULL,
+  awarded_by      VARCHAR(36) NOT NULL,
+  awarded_by_name VARCHAR(100) NOT NULL,
+  awarded_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+  INDEX idx_student (student_id, awarded_at)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS student_objectives (

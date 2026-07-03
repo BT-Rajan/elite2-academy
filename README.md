@@ -45,8 +45,31 @@ src/app/
 
 dojo-api/                        # PHP REST API backend (see SETUP.md)
 ├── api/index.php                # Router / entry point
-├── controllers/                 # Auth, Student, Attendance, Generic CRUD
+├── controllers/                 # Auth, Student, Attendance, Curriculum, Evaluation, Generic CRUD
 ├── core/                        # Database, JWT, Mailer, Response helpers
-├── middleware/                  # Auth middleware
+├── middleware/                  # Auth middleware (role + Head Coach checks)
 └── database/seed.php            # First-admin seed script
 ```
+
+## Curriculum Roadmap
+
+Disciplines can define a multi-track belt roadmap (e.g. Elita's integrated
+Kajukenbo + Kickboxing + BJJ + Self-Defense program — "One Belt, One
+Stripe, Three Arts"). Each belt can carry a Kickboxing level, a BJJ stripe
+requirement, a required number of Self-Defense seminar points, and
+per-track syllabus text.
+
+- **Parents/students** see the full roadmap and their current position under
+  the child's **Roadmap** tab.
+- **Coaches** evaluate a student's Striking, Grappling, and Self-Defense
+  readiness per track, award BJJ stripes and seminar points, and promote a
+  student once all three tracks pass and seminar points are met.
+- **Head Coaches** (a flag an Admin sets per coach under Staff & Members)
+  can overrule any single coach's evaluation, and can force a promotion
+  that doesn't yet meet all requirements — always with a documented reason.
+- **Admins** configure the roadmap itself (belts + syllabus) under
+  Disciplines & Belts.
+
+See `dojo-api/database/seed_curriculum_elita.php` to seed the Elita
+curriculum, and `dojo-api/database/migrate_curriculum_v1.sql` to add the
+feature to an existing database.

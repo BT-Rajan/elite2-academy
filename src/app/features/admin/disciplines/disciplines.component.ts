@@ -76,6 +76,11 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
                   <div class="text-muted text-sm">
                     {{ b.minClasses }} classes · Score {{ b.minScore }}/10 min
                   </div>
+                  <div *ngIf="b.kickboxingLevel || b.bjjStripeLabel || b.seminarPointsRequired" class="text-muted text-sm">
+                    <span *ngIf="b.kickboxingLevel">🥊 {{ b.kickboxingLevel }}</span>
+                    <span *ngIf="b.bjjStripeLabel"> · 🥋 {{ b.bjjStripeLabel }}</span>
+                    <span *ngIf="b.seminarPointsRequired"> · 🎓 {{ b.seminarPointsRequired }} pts</span>
+                  </div>
                 </div>
                 <span class="badge badge--gray" style="font-size:11px">Level {{ b.sortOrder }}</span>
               </div>
@@ -114,6 +119,23 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
             <input type="number" class="input" [(ngModel)]="newBelt.minScore" min="1" max="10">
           </div>
         </div>
+        <div class="text-muted text-sm mb-2" style="margin-top:4px">
+          Curriculum roadmap fields (optional — for multi-track programs like Kickboxing + BJJ + Self-Defense)
+        </div>
+        <div class="form-grid form-grid--2">
+          <div class="form-group">
+            <label>Kickboxing Level</label>
+            <input class="input" [(ngModel)]="newBelt.kickboxingLevel" placeholder="e.g. Beginner, Intermediate">
+          </div>
+          <div class="form-group">
+            <label>BJJ Stripe Requirement</label>
+            <input class="input" [(ngModel)]="newBelt.bjjStripeLabel" placeholder="e.g. 1 × White, Belt is marker">
+          </div>
+          <div class="form-group">
+            <label>Seminar Points Required</label>
+            <input type="number" class="input" [(ngModel)]="newBelt.seminarPointsRequired" min="0">
+          </div>
+        </div>
         <div class="form-error" *ngIf="beltError()">{{ beltError() }}</div>
         <button class="btn btn--primary btn--full" (click)="addBelt(disc.id)" [disabled]="saving()">
           {{ saving() ? 'Saving…' : 'Add Belt' }}
@@ -136,7 +158,10 @@ export class DisciplinesComponent implements OnInit {
   beltError    = signal('');
 
   newDisc = { name: '', color: '#3b82f6', description: '' };
-  newBelt = { name: '', colorHex: '#ffffff', sortOrder: 1, minClasses: 10, minScore: 5 };
+  newBelt = {
+    name: '', colorHex: '#ffffff', sortOrder: 1, minClasses: 10, minScore: 5,
+    kickboxingLevel: '', bjjStripeLabel: '', seminarPointsRequired: 0,
+  };
 
   ngOnInit() {
     this.disciplines$ = this.ds.byDojo$(this.auth.currentUser()!.dojoId);
@@ -166,6 +191,7 @@ export class DisciplinesComponent implements OnInit {
     this.newDisc = { name: '', color: '#3b82f6', description: '' };
     this.showAddDisc.set(false);
     this.saving.set(false);
+    this.disciplines$ = this.ds.byDojo$(this.auth.currentUser()!.dojoId);
   }
 
   async addBelt(discId: string) {
@@ -178,8 +204,17 @@ export class DisciplinesComponent implements OnInit {
       sortOrder: this.newBelt.sortOrder,
       minClasses: this.newBelt.minClasses,
       minScore: this.newBelt.minScore,
+      kickboxingLevel: this.newBelt.kickboxingLevel || undefined,
+      bjjStripeLabel: this.newBelt.bjjStripeLabel || undefined,
+      seminarPointsRequired: this.newBelt.seminarPointsRequired || 0,
     });
-    this.newBelt = { name: '', colorHex: '#ffffff', sortOrder: 1, minClasses: 10, minScore: 5 };
+    this.newBelt = {
+      name: '', colorHex: '#ffffff', sortOrder: 1, minClasses: 10, minScore: 5,
+      kickboxingLevel: '', bjjStripeLabel: '', seminarPointsRequired: 0,
+    };
     this.saving.set(false);
+    // Refresh this discipline's belt list — it's cached so the newly
+    // added belt would otherwise stay invisible until a full page reload.
+    this.beltCache.set(discId, this.ds.belts$(discId));
   }
 }

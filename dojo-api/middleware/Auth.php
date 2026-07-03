@@ -16,4 +16,15 @@ class AuthMiddleware {
             Response::forbidden("Role required: " . implode(' or ', $roles));
         }
     }
+
+    // Head-coach-only actions (e.g. overruling another coach's evaluation
+    // or promotion decision). Admins are always allowed too, since they
+    // have full operational authority over the dojo.
+    public static function requireHeadCoach(array $payload): void {
+        $isAdmin     = ($payload['role'] ?? '') === 'admin';
+        $isHeadCoach = ($payload['role'] ?? '') === 'coach' && !empty($payload['isHeadCoach']);
+        if (!$isAdmin && !$isHeadCoach) {
+            Response::forbidden('Only a Head Coach or Admin can overrule an evaluation.');
+        }
+    }
 }

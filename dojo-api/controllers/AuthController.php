@@ -185,6 +185,7 @@ class AuthController {
             'lastName'    => $row['last_name']   ?? null,
             'phone'       => $row['phone']       ?? null,
             'role'        => $row['role'],
+            'isHeadCoach' => (bool)($row['is_head_coach'] ?? false),
             'dojoId'      => $row['dojo_id'],
             'avatarUrl'   => $row['avatar_url'] ?? null,
             'createdAt'   => $row['created_at'],
@@ -193,9 +194,10 @@ class AuthController {
 
     private function issueToken(array $user): string {
         return JWT::encode([
-            'uid'    => $user['uid'],
-            'role'   => $user['role'],
-            'dojoId' => $user['dojoId'],
+            'uid'         => $user['uid'],
+            'role'        => $user['role'],
+            'isHeadCoach' => $user['isHeadCoach'],
+            'dojoId'      => $user['dojoId'],
         ], $this->cfg['jwt_secret'], $this->cfg['jwt_expiry']);
     }
 }

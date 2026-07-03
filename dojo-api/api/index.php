@@ -105,6 +105,39 @@ try {
         if ($method === 'PATCH') { (new StudentController)->updateObjective((int)$m[1], (int)$m[2]); }
     }
 
+    // ── Curriculum Roadmap ────────────────────────────────────────────────────
+    require_once __DIR__.'/../controllers/CurriculumController.php';
+    $cc = new CurriculumController;
+    if (preg_match('#^/disciplines/(\d+)/roadmap$#', $uri, $m) && $method === 'GET') { $cc->roadmap((int)$m[1]); }
+    if (preg_match('#^/belts/(\d+)/syllabus$#', $uri, $m)) {
+        $id = (int)$m[1];
+        if ($method === 'GET')  { $cc->syllabus($id); }
+        if ($method === 'POST') { $cc->addSyllabus($id); }
+    }
+    if (preg_match('#^/syllabus/(\d+)$#', $uri, $m)) {
+        $id = (int)$m[1];
+        if ($method === 'PATCH')  { $cc->updateSyllabus($id); }
+        if ($method === 'DELETE') { $cc->deleteSyllabus($id); }
+    }
+
+    // ── Evaluations, Promotion, Seminar Points, BJJ Stripes ─────────────────────
+    require_once __DIR__.'/../controllers/EvaluationController.php';
+    $ec = new EvaluationController;
+    if (preg_match('#^/students/(\d+)/evaluations$#', $uri, $m)) {
+        $id = (int)$m[1];
+        if ($method === 'GET')  { $ec->list($id); }
+        if ($method === 'POST') { $ec->create($id); }
+    }
+    if (preg_match('#^/evaluations/(\d+)/overrule$#', $uri, $m) && $method === 'PATCH') { $ec->overrule((int)$m[1]); }
+    if (preg_match('#^/students/(\d+)/promotion-readiness$#', $uri, $m) && $method === 'GET') { $ec->readiness((int)$m[1]); }
+    if (preg_match('#^/students/(\d+)/promote$#', $uri, $m) && $method === 'POST') { $ec->promote((int)$m[1]); }
+    if (preg_match('#^/students/(\d+)/seminar-points$#', $uri, $m)) {
+        $id = (int)$m[1];
+        if ($method === 'GET')  { $ec->seminarPointsLog($id); }
+        if ($method === 'POST') { $ec->awardSeminarPoints($id); }
+    }
+    if (preg_match('#^/students/(\d+)/bjj-stripe$#', $uri, $m) && $method === 'POST') { $ec->awardStripe((int)$m[1]); }
+
     // ── Sessions & Attendance ─────────────────────────────────────────────────
     require_once __DIR__.'/../controllers/AttendanceController.php';
     if ($uri === '/sessions'            && $method === 'GET')    { (new AttendanceController)->listSessions(); }
@@ -190,6 +223,7 @@ try {
 
     // Users
     if ($uri === '/users'               && $method === 'GET')    { $gc->listUsers(); }
+    if (preg_match('#^/users/([^/]+)/head-coach$#', $uri, $m) && $method === 'PATCH') { $gc->setHeadCoach($m[1]); }
 
     // Dojos
     if (preg_match('#^/dojos/([^/]+)$#', $uri, $m)) {

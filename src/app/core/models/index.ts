@@ -15,6 +15,7 @@ export interface UserProfile {
   lastName?: string;
   phone?: string;
   role: UserRole;
+  isHeadCoach?: boolean;   // coaches only — can overrule evaluations & promotions
   avatarUrl?: string;
   dojoId: string;
   createdAt: Date;
@@ -42,6 +43,8 @@ export interface Student {
   avatarUrl?: string;
   disciplineId: string;
   currentBeltId: string;
+  bjjStripes?: number;      // stripes earned toward the current belt
+  seminarPoints?: number;   // accumulated toward the current belt's requirement
   enrolledAt: Date;
   mbClientId?: string;
   isActive: boolean;
@@ -63,16 +66,80 @@ export interface Belt {
   sortOrder: number;
   minClasses: number;
   minScore: number;
+  // Curriculum roadmap fields — used by multi-track programs (e.g. Elita's
+  // integrated Kaju + Kickboxing + BJJ + Self-Defense "One Belt, One
+  // Stripe, Three Arts" model). Optional so single-track disciplines can
+  // leave them unset.
+  kickboxingLevel?: string;         // e.g. "Beginner", "Intermediate", "Advanced", "Expert"
+  bjjStripeLabel?: string;          // e.g. "1 × White", "Belt is marker", "None"
+  seminarPointsRequired?: number;
+  syllabus?: CurriculumSyllabusItem[];
+}
+
+export type CurriculumTrack = 'striking' | 'grappling' | 'selfdefense';
+
+export interface CurriculumSyllabusItem {
+  id: string;
+  beltId: string;
+  track: CurriculumTrack;
+  title: string;
+  description?: string;
+  sortOrder: number;
 }
 
 export interface BeltHistory {
   id: string;
   studentId: string;
-  beltId: string;
+  beltId?: string;
   beltName: string;
   awardedBy: string;   // coach uid
   awardedAt: Date;
   notes?: string;
+}
+
+export type EvaluationResult = 'pass' | 'fail';
+
+export interface StudentEvaluation {
+  id: string;
+  studentId: string;
+  beltId: string;
+  beltName?: string;
+  track: CurriculumTrack;
+  result: EvaluationResult;
+  notes?: string;
+  coachUid: string;
+  coachName: string;
+  evaluatedAt: Date;
+  overruledBy?: string;
+  overruledByName?: string;
+  overruleResult?: EvaluationResult;
+  overruleNotes?: string;
+  overruledAt?: Date;
+}
+
+export interface TrackReadiness {
+  evaluation: StudentEvaluation | null;
+  effectiveResult: EvaluationResult | null;
+}
+
+export interface PromotionReadiness {
+  isReady: boolean;
+  tracks: Record<CurriculumTrack, TrackReadiness>;
+  seminarPoints: number;
+  seminarPointsRequired: number;
+  bjjStripes: number;
+  bjjStripeLabel?: string;
+  currentBelt: Belt;
+}
+
+export interface SeminarPointsLogEntry {
+  id: string;
+  studentId: string;
+  points: number;
+  reason: string;
+  awardedBy: string;
+  awardedByName: string;
+  awardedAt: Date;
 }
 
 export type SkillKey = 'technique' | 'fitness' | 'discipline' | 'focus' | 'attitude' | 'balance' | 'reflex' | 'speed' | 'flexibility';

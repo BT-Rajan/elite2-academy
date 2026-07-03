@@ -50,7 +50,7 @@ type View = 'coaches' | 'staff' | 'parents' | 'invite';
             subtitle="Invite coaches using the button above.">
           </dojo-empty-state>
           <table *ngIf="coaches.length > 0">
-            <thead><tr><th>Coach</th><th>Email</th><th>Joined</th><th>Students</th><th></th></tr></thead>
+            <thead><tr><th>Coach</th><th>Email</th><th>Joined</th><th>Students</th><th>Head Coach</th><th></th></tr></thead>
             <tbody>
               <tr *ngFor="let c of filterUsers(coaches)">
                 <td>
@@ -63,6 +63,10 @@ type View = 'coaches' | 'staff' | 'parents' | 'invite';
                 <td class="text-muted">{{ c.createdAt | date:'MMM y' }}</td>
                 <td>
                   <span class="badge badge--accent">{{ studentCount(c.uid) }} students</span>
+                </td>
+                <td>
+                  <span *ngIf="c.isHeadCoach" class="badge badge--success">⭐ Head Coach</span>
+                  <span *ngIf="!c.isHeadCoach" class="badge badge--gray">Coach</span>
                 </td>
                 <td>
                   <button class="btn btn--ghost btn--sm" (click)="selectedCoach.set(c)">View</button>
@@ -99,6 +103,17 @@ type View = 'coaches' | 'staff' | 'parents' | 'invite';
               <div class="text-muted text-sm mb-1">Students assigned</div>
               <div style="font-weight:600;color:var(--accent)">{{ studentCount(coach.uid) }}</div>
             </div>
+          </div>
+
+          <div style="margin-top:16px;padding:12px 16px;background:var(--surface-2);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <div>
+              <div style="font-weight:600;font-size:13px">⭐ Head Coach</div>
+              <div class="text-muted text-sm">Can overrule other coaches' evaluations and force promotions.</div>
+            </div>
+            <button class="btn btn--sm" [class.btn--primary]="coach.isHeadCoach" [class.btn--secondary]="!coach.isHeadCoach"
+              (click)="toggleHeadCoach(coach)">
+              {{ coach.isHeadCoach ? '✓ Head Coach' : 'Make Head Coach' }}
+            </button>
           </div>
 
           <div style="margin-top:16px">
@@ -261,6 +276,13 @@ export class StaffComponent implements OnInit {
     this.parents$  = this.us.parents$(dojoId);
     this.students$ = this.sts.byDojo$(dojoId);
     this.students$.subscribe(s => this._studentList = s);
+  }
+
+  async toggleHeadCoach(coach: UserProfile) {
+    await this.us.setHeadCoach(coach.uid, !coach.isHeadCoach);
+    coach.isHeadCoach = !coach.isHeadCoach;
+    this.selectedCoach.set({ ...coach });
+    this.coaches$ = this.us.coaches$(this.auth.currentUser()!.dojoId);
   }
 
   filterUsers(users: UserProfile[]): UserProfile[] {

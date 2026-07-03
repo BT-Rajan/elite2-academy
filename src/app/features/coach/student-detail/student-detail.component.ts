@@ -7,23 +7,26 @@ import { AuthService } from '../../../core/services/auth.service';
 import { StudentService } from '../../../core/services/student.service';
 import { AttendanceService } from '../../../core/services/attendance.service';
 import { BeltService } from '../../../core/services/belt.service';
-import { Student, SessionComment, AttendanceRecord, BeltHistory, StudentObjective } from '../../../core/models';
+import { EvaluationService } from '../../../core/services/evaluation.service';
+import { Student, SessionComment, AttendanceRecord, BeltHistory, StudentObjective,
+         Belt, PromotionReadiness, StudentEvaluation, CurriculumTrack } from '../../../core/models';
 import { SKILL_KEYS, SKILL_LABELS, calcAge } from '../../../core/utils';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { SkillBarComponent } from '../../../shared/components/skill-bar/skill-bar.component';
 import { BadgeComponent } from '../../../shared/components/badge/badge.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { RoadmapComponent } from '../../../shared/components/roadmap/roadmap.component';
 import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
 
-type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'comments';
+type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments';
 
 @Component({
   selector: 'app-student-detail',
   standalone: true,
   imports: [CommonModule, AsyncPipe, DatePipe, FormsModule, RouterLink,
             PageHeaderComponent, AvatarComponent, SkillBarComponent,
-            BadgeComponent, EmptyStateComponent, TimeAgoPipe],
+            BadgeComponent, EmptyStateComponent, RoadmapComponent, TimeAgoPipe],
   template: `
     <a routerLink="/coach/students" class="btn btn--ghost btn--sm mb-4">← Back to students</a>
 
@@ -201,6 +204,128 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'comments';
         </div>
       </ng-container>
 
+      <!-- Roadmap Tab — evaluate tracks, award seminar points/stripes, promote -->
+      <ng-container *ngIf="activeTab() === 'roadmap'">
+        <div class="form-grid form-grid--2 mb-4" *ngIf="readiness$ | async as r">
+          <div class="card">
+            <div class="card__header"><span class="card__title">Promotion Readiness — {{ r.currentBelt.name }}</span></div>
+            <div class="card__body">
+              <div class="progress-grid">
+                <div *ngFor="let t of trackOrder" class="progress-item">
+                  <span class="text-muted text-sm">{{ trackLabel[t] }}</span>
+                  <span class="badge" [class.badge--success]="r.tracks[t].effectiveResult === 'pass'"
+                    [class.badge--warning]="r.tracks[t].effectiveResult === 'fail'"
+                    [class.badge--gray]="!r.tracks[t].effectiveResult">
+                    {{ r.tracks[t].effectiveResult ?? 'Not evaluated' }}
+                  </span>
+                </div>
+                <div class="progress-item">
+                  <span class="text-muted text-sm">Seminar Points</span>
+                  <span class="badge" [class.badge--success]="r.seminarPoints >= r.seminarPointsRequired" [class.badge--gray]="r.seminarPoints < r.seminarPointsRequired">
+                    {{ r.seminarPoints }} / {{ r.seminarPointsRequired }}
+                  </span>
+                </div>
+                <div class="progress-item">
+                  <span class="text-muted text-sm">BJJ Stripes ({{ r.bjjStripeLabel }})</span>
+                  <span class="badge badge--info">{{ r.bjjStripes }}</span>
+                </div>
+              </div>
+
+              <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn btn--secondary btn--sm" (click)="awardStripe(s.id)">🥋 +1 BJJ Stripe</button>
+                <input class="input" type="number" [(ngModel)]="seminarPointsToAward" style="width:80px" placeholder="Pts">
+                <input class="input" [(ngModel)]="seminarPointsReason" placeholder="Reason (e.g. Weapons seminar)" style="flex:1;min-width:160px">
+                <button class="btn btn--secondary btn--sm" (click)="awardSeminarPoints(s.id)">🎓 Award Points</button>
+              </div>
+
+              <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+                <button *ngIf="r.isReady" class="btn btn--primary btn--full" (click)="promote(s)">
+                  🎉 Promote to Next Belt
+                </button>
+                <ng-container *ngIf="!r.isReady">
+                  <div class="text-muted text-sm mb-2">Not all requirements are met yet.</div>
+                  <ng-container *ngIf="canOverrule()">
+                    <textarea class="textarea" [(ngModel)]="overrideNotes" rows="2"
+                      placeholder="Reason for promoting despite unmet requirements (required)…"></textarea>
+                    <button class="btn btn--danger btn--full mt-2" [disabled]="!overrideNotes.trim()" (click)="promote(s, true)">
+                      ⚠️ Head Coach Override — Promote Anyway
+                    </button>
+                  </ng-container>
+                </ng-container>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card__header"><span class="card__title">Evaluate — {{ r.currentBelt.name }}</span></div>
+            <div class="card__body">
+              <div class="form-group">
+                <label>Track</label>
+                <select class="input" [(ngModel)]="evalTrack">
+                  <option *ngFor="let t of trackOrder" [value]="t">{{ trackLabel[t] }}</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Result</label>
+                <div style="display:flex;gap:8px">
+                  <button class="btn btn--sm" [class.btn--primary]="evalResult === 'pass'" [class.btn--secondary]="evalResult !== 'pass'" (click)="evalResult = 'pass'">✓ Pass</button>
+                  <button class="btn btn--sm" [class.btn--primary]="evalResult === 'fail'" [class.btn--secondary]="evalResult !== 'fail'" (click)="evalResult = 'fail'">✗ Fail</button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Notes</label>
+                <textarea class="textarea" [(ngModel)]="evalNotes" rows="2" placeholder="What did you observe?"></textarea>
+              </div>
+              <button class="btn btn--primary btn--full" (click)="submitEvaluation(s.id)">Save Evaluation</button>
+
+              <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+                <div *ngIf="evaluations$ | async as evals">
+                  <dojo-empty-state *ngIf="evals.length === 0" icon="📋" title="No evaluations yet"></dojo-empty-state>
+                  <div *ngFor="let e of evals" style="padding:10px 0;border-bottom:1px solid var(--border)">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                      <strong style="font-size:13px">{{ trackLabel[e.track] }} — {{ e.beltName }}</strong>
+                      <span class="badge" [class.badge--success]="e.result === 'pass'" [class.badge--danger]="e.result === 'fail'">{{ e.result }}</span>
+                    </div>
+                    <div class="text-muted text-sm">{{ e.coachName }} · {{ e.evaluatedAt | timeAgo }}</div>
+                    <div *ngIf="e.notes" class="text-muted text-sm" style="font-style:italic">"{{ e.notes }}"</div>
+
+                    <div *ngIf="e.overruledBy" style="margin-top:6px;padding:8px 10px;background:var(--surface-2);border-radius:var(--radius-md);border-left:3px solid var(--accent)">
+                      <div style="font-size:12px;font-weight:600">
+                        Overruled to <span class="badge" [class.badge--success]="e.overruleResult === 'pass'" [class.badge--danger]="e.overruleResult === 'fail'">{{ e.overruleResult }}</span>
+                        by {{ e.overruledByName }}
+                      </div>
+                      <div class="text-muted text-sm" style="font-style:italic">"{{ e.overruleNotes }}"</div>
+                    </div>
+
+                    <button *ngIf="!e.overruledBy && canOverrule()" class="btn btn--ghost btn--sm mt-2" (click)="openOverrule(e)">
+                      Overrule
+                    </button>
+
+                    <div *ngIf="overruling()?.id === e.id" style="margin-top:8px">
+                      <div style="display:flex;gap:6px;margin-bottom:6px">
+                        <button class="btn btn--sm" [class.btn--primary]="overruleResult==='pass'" [class.btn--secondary]="overruleResult!=='pass'" (click)="overruleResult='pass'">✓ Pass</button>
+                        <button class="btn btn--sm" [class.btn--primary]="overruleResult==='fail'" [class.btn--secondary]="overruleResult!=='fail'" (click)="overruleResult='fail'">✗ Fail</button>
+                      </div>
+                      <textarea class="textarea" [(ngModel)]="overruleNotes" rows="2" placeholder="Reason for overruling (required)…"></textarea>
+                      <button class="btn btn--danger btn--sm mt-2" [disabled]="!overruleNotes.trim()" (click)="submitOverrule(e)">Confirm Overrule</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card__header"><span class="card__title">Curriculum Roadmap</span></div>
+          <div class="card__body" *ngIf="roadmap$ | async as roadmap">
+            <dojo-empty-state *ngIf="roadmap.length === 0" icon="🗺️" title="No roadmap configured yet"
+              subtitle="Set up belts and syllabus for this discipline under Admin → Curriculum."></dojo-empty-state>
+            <dojo-roadmap *ngIf="roadmap.length" [belts]="roadmap" [currentBeltId]="s.currentBeltId"></dojo-roadmap>
+          </div>
+        </div>
+      </ng-container>
+
       <!-- Comments Tab -->
       <ng-container *ngIf="activeTab() === 'comments'">
         <div class="card mb-4">
@@ -249,6 +374,9 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'comments';
       &:hover { color:var(--text); }
       &.active { color:var(--accent); border-bottom-color:var(--accent); }
     }
+    .progress-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; }
+    .progress-item  { display:flex; flex-direction:column; align-items:flex-start; gap:6px;
+                       padding:10px; background:var(--surface-2); border-radius:var(--radius-md); }
   `]
 })
 export class StudentDetailComponent implements OnInit {
@@ -257,12 +385,31 @@ export class StudentDetailComponent implements OnInit {
   private sts     = inject(StudentService);
   private as_     = inject(AttendanceService);
   private bs      = inject(BeltService);
+  private es      = inject(EvaluationService);
 
   student$!:    Observable<Student | undefined>;
   comments$!:   Observable<SessionComment[]>;
   attendance$!: Observable<AttendanceRecord[]>;
   beltHistory$!:Observable<BeltHistory[]>;
   objectives$!: Observable<StudentObjective[]>;
+  roadmap$!:    Observable<Belt[]>;
+  readiness$!:  Observable<PromotionReadiness>;
+  evaluations$!:Observable<StudentEvaluation[]>;
+
+  trackOrder: CurriculumTrack[] = ['striking', 'grappling', 'selfdefense'];
+  trackLabel: Record<CurriculumTrack, string> = { striking: 'Striking', grappling: 'Grappling', selfdefense: 'Self-Defense' };
+
+  evalTrack: CurriculumTrack = 'striking';
+  evalResult: 'pass' | 'fail' = 'pass';
+  evalNotes = '';
+
+  seminarPointsToAward = 1;
+  seminarPointsReason = '';
+
+  overrideNotes = '';
+  overruling = signal<StudentEvaluation | null>(null);
+  overruleResult: 'pass' | 'fail' = 'pass';
+  overruleNotes = '';
 
   activeTab   = signal<Tab>('overview');
   savingSkills = signal(false);
@@ -284,21 +431,33 @@ export class StudentDetailComponent implements OnInit {
     { key: 'skills'     as Tab, icon: '📊',  label: 'Skills' },
     { key: 'attendance' as Tab, icon: '✓',   label: 'Attendance' },
     { key: 'belt'       as Tab, icon: '🥋',  label: 'Belt' },
+    { key: 'roadmap'    as Tab, icon: '🗺️',  label: 'Roadmap' },
     { key: 'comments'   as Tab, icon: '💬',  label: 'Comments' },
   ];
 
+  private studentId = '';
+
   ngOnInit() {
-    const id$ = this.route.params;
     this.student$ = this.route.params.pipe(
       switchMap(p => this.sts.get$(p['id']))
     );
     this.route.params.subscribe(p => {
       const sid = p['id'];
-      this.comments$    = this.sts.comments$(sid);
-      this.attendance$  = this.as_.byStudent$(sid);
-      this.beltHistory$ = this.bs.history$(sid);
-      this.objectives$  = this.bs.objectives$(sid);
+      this.studentId     = sid;
+      this.comments$     = this.sts.comments$(sid);
+      this.attendance$   = this.as_.byStudent$(sid);
+      this.beltHistory$  = this.bs.history$(sid);
+      this.objectives$   = this.bs.objectives$(sid);
+      this.refreshEvaluationState(sid);
     });
+    this.student$.subscribe(s => {
+      if (s?.disciplineId) this.roadmap$ = this.bs.roadmap$(s.disciplineId);
+    });
+  }
+
+  private refreshEvaluationState(studentId: string) {
+    this.readiness$   = this.es.readiness$(studentId);
+    this.evaluations$ = this.es.evaluations$(studentId);
   }
 
   avgScore(): number {
@@ -384,5 +543,70 @@ export class StudentDetailComponent implements OnInit {
     const counted = records.filter(r => r.status !== 'excused').length;
     const present = records.filter(r => r.status === 'present' || r.status === 'late').length;
     return counted ? Math.round(present / counted * 100) : 0;
+  }
+
+  // ── Curriculum roadmap: evaluate / promote / seminar points / stripes ──────
+
+  // A Head Coach or an Admin may overrule a coach's evaluation or force a
+  // promotion. Plain coaches can evaluate and promote (when requirements
+  // are met) but cannot overrule.
+  canOverrule(): boolean {
+    const user = this.auth.currentUser();
+    return !!user && (user.role === 'admin' || (user.role === 'coach' && !!user.isHeadCoach));
+  }
+
+  async submitEvaluation(studentId: string) {
+    const user = this.auth.currentUser()!;
+    await this.es.evaluate(studentId, {
+      track: this.evalTrack, result: this.evalResult,
+      notes: this.evalNotes, coachName: user.displayName,
+    });
+    this.evalNotes = '';
+    this.refreshEvaluationState(studentId);
+  }
+
+  openOverrule(evaluation: StudentEvaluation) {
+    this.overruling.set(evaluation);
+    this.overruleResult = 'pass';
+    this.overruleNotes = '';
+  }
+
+  async submitOverrule(evaluation: StudentEvaluation) {
+    if (!this.overruleNotes.trim()) return;
+    const user = this.auth.currentUser()!;
+    await this.es.overrule(evaluation.id, {
+      result: this.overruleResult, notes: this.overruleNotes.trim(), overruledByName: user.displayName,
+    });
+    this.overruling.set(null);
+    this.overruleNotes = '';
+    this.refreshEvaluationState(this.studentId);
+  }
+
+  async awardStripe(studentId: string) {
+    await this.es.awardStripe(studentId);
+    this.refreshEvaluationState(studentId);
+  }
+
+  async awardSeminarPoints(studentId: string) {
+    if (!this.seminarPointsToAward || !this.seminarPointsReason.trim()) return;
+    const user = this.auth.currentUser()!;
+    await this.es.awardSeminarPoints(studentId, this.seminarPointsToAward, this.seminarPointsReason.trim(), user.displayName);
+    this.seminarPointsToAward = 1;
+    this.seminarPointsReason = '';
+    this.refreshEvaluationState(studentId);
+  }
+
+  // override=true is only reachable via the Head Coach / Admin override
+  // button, which the template only renders when canOverrule() is true —
+  // the API independently enforces this server-side either way.
+  async promote(student: Student, override = false) {
+    const user = this.auth.currentUser()!;
+    await this.es.promote(student.id, {
+      awardedBy: user.displayName,
+      overrideNotes: override ? this.overrideNotes.trim() : undefined,
+    });
+    this.overrideNotes = '';
+    this.beltHistory$ = this.bs.history$(student.id);
+    this.refreshEvaluationState(student.id);
   }
 }

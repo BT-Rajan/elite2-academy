@@ -21,4 +21,11 @@ export class UserService {
   coaches$(dojoId: string) { return this.byRole$(dojoId, 'coach'); }
   parents$(dojoId: string) { return this.byRole$(dojoId, 'parent'); }
   staff$(dojoId: string)   { return this.byRole$(dojoId, 'staff'); }
+
+  // Admin-only — designates or removes a coach's Head Coach status. Head
+  // Coaches can overrule other coaches' curriculum evaluations and force
+  // promotions; the server independently enforces the admin-only check.
+  async setHeadCoach(uid: string, isHeadCoach: boolean): Promise<void> {
+    await this.api.patch(`/users/${uid}/head-coach`, { isHeadCoach }).toPromise();
+  }
 }

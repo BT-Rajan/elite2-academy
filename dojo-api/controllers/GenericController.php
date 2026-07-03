@@ -52,16 +52,31 @@ class GenericController {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireRole($auth, 'admin');
         $b = $this->body();
-        $this->db->prepare("INSERT INTO belts (discipline_id, name, color_hex, sort_order, min_classes, min_score) VALUES (?,?,?,?,?,?)")
-            ->execute([$discId, $b['name'] ?? '', $b['colorHex'] ?? '#fff', $b['sortOrder'] ?? 1, $b['minClasses'] ?? 0, $b['minScore'] ?? 0]);
+        $this->db->prepare("
+            INSERT INTO belts (discipline_id, name, color_hex, sort_order, min_classes, min_score,
+                                kickboxing_level, bjj_stripe_label, seminar_points_required)
+            VALUES (?,?,?,?,?,?,?,?,?)")
+            ->execute([
+                $discId, $b['name'] ?? '', $b['colorHex'] ?? '#fff', $b['sortOrder'] ?? 1,
+                $b['minClasses'] ?? 0, $b['minScore'] ?? 0,
+                $b['kickboxingLevel'] ?? null, $b['bjjStripeLabel'] ?? null, $b['seminarPointsRequired'] ?? 0,
+            ]);
         Response::created(['id' => $this->db->lastInsertId()]);
     }
     public function updateBelt(int $discId, int $beltId): never {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireRole($auth, 'admin');
         $b = $this->body();
-        $this->db->prepare("UPDATE belts SET name=?, color_hex=?, sort_order=?, min_classes=?, min_score=? WHERE id=? AND discipline_id=?")
-            ->execute([$b['name'] ?? '', $b['colorHex'] ?? '#fff', $b['sortOrder'] ?? 1, $b['minClasses'] ?? 0, $b['minScore'] ?? 0, $beltId, $discId]);
+        $this->db->prepare("
+            UPDATE belts SET name=?, color_hex=?, sort_order=?, min_classes=?, min_score=?,
+                              kickboxing_level=?, bjj_stripe_label=?, seminar_points_required=?
+            WHERE id=? AND discipline_id=?")
+            ->execute([
+                $b['name'] ?? '', $b['colorHex'] ?? '#fff', $b['sortOrder'] ?? 1,
+                $b['minClasses'] ?? 0, $b['minScore'] ?? 0,
+                $b['kickboxingLevel'] ?? null, $b['bjjStripeLabel'] ?? null, $b['seminarPointsRequired'] ?? 0,
+                $beltId, $discId,
+            ]);
         Response::ok(['updated' => true]);
     }
 
@@ -271,12 +286,29 @@ class GenericController {
         $auth   = AuthMiddleware::require();
         $dojoId = $_GET['dojoId'] ?? $auth['dojoId'];
         $role   = $_GET['role']   ?? null;
-        $sql = "SELECT uid, email, display_name, role, dojo_id, avatar_url, created_at FROM users WHERE dojo_id = ? AND is_active = 1";
+        $sql = "SELECT uid, email, display_name, role, is_head_coach, dojo_id, avatar_url, created_at FROM users WHERE dojo_id = ? AND is_active = 1";
         $p = [$dojoId];
         if ($role) { $sql .= " AND role = ?"; $p[] = $role; }
         $sql .= " ORDER BY display_name";
         $stmt = $this->db->prepare($sql); $stmt->execute($p);
         Response::ok($stmt->fetchAll());
+    }
+
+    // PATCH /users/:uid/head-coach — admin promotes/demotes a coach to Head Coach.
+    // Head coaches can overrule any coach's student evaluations and promotion
+    // decisions; this is the only place that flag can be changed.
+    public function setHeadCoach(string $uid): never {
+        $auth = AuthMiddleware::require();
+        AuthMiddleware::requireRole($auth, 'admin');
+        $b = $this->body();
+        $stmt = $this->db->prepare("SELECT role FROM users WHERE uid = ? AND dojo_id = ?");
+        $stmt->execute([$uid, $auth['dojoId']]);
+        $row = $stmt->fetch();
+        if (!$row) Response::notFound('User not found.');
+        if ($row['role'] !== 'coach') Response::error('Only coaches can be designated Head Coach.', 422);
+        $this->db->prepare("UPDATE users SET is_head_coach = ? WHERE uid = ?")
+            ->execute([!empty($b['isHeadCoach']) ? 1 : 0, $uid]);
+        Response::ok(['updated' => true]);
     }
 
     // ── Dojos ─────────────────────────────────────────────────────────────────

@@ -8,8 +8,11 @@ import { map } from 'rxjs/operators';
 export class BeltService extends BaseHttpService<Belt> {
   protected endpoint = '/belts';
 
-  byDiscipline$(disciplineId: string): Observable<Belt[]> {
-    return this.list$({ disciplineId });
+  // Full curriculum roadmap for a discipline: each belt with its
+  // Striking/Grappling/Self-Defense syllabus attached, in belt order.
+  roadmap$(disciplineId: string): Observable<Belt[]> {
+    return this.api.get<{ data: Belt[] }>(`/disciplines/${disciplineId}/roadmap`)
+      .pipe(map(r => r.data));
   }
 
   history$(studentId: string): Observable<BeltHistory[]> {

@@ -7,22 +7,24 @@ import { AuthService } from '../../../core/services/auth.service';
 import { StudentService } from '../../../core/services/student.service';
 import { AttendanceService } from '../../../core/services/attendance.service';
 import { BeltService } from '../../../core/services/belt.service';
-import { Student, SessionComment, AttendanceRecord, BeltHistory, StudentObjective } from '../../../core/models';
+import { EvaluationService } from '../../../core/services/evaluation.service';
+import { Student, SessionComment, AttendanceRecord, BeltHistory, StudentObjective, Belt, PromotionReadiness } from '../../../core/models';
 import { SKILL_KEYS, SKILL_LABELS, calcAge } from '../../../core/utils';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { SkillBarComponent } from '../../../shared/components/skill-bar/skill-bar.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { RoadmapComponent } from '../../../shared/components/roadmap/roadmap.component';
 import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
 
-type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'comments';
+type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments';
 
 @Component({
   selector: 'app-child-progress',
   standalone: true,
   imports: [CommonModule, AsyncPipe, DatePipe, RouterLink,
             PageHeaderComponent, AvatarComponent, SkillBarComponent,
-            EmptyStateComponent, TimeAgoPipe],
+            EmptyStateComponent, RoadmapComponent, TimeAgoPipe],
   template: `
     <dojo-page-header title="My Child's Progress" subtitle="Skill development and achievements"></dojo-page-header>
 
@@ -226,6 +228,42 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'comments';
         </div>
       </ng-container>
 
+      <!-- Roadmap tab — the curriculum roadmap with your child's current position -->
+      <ng-container *ngIf="activeTab() === 'roadmap'">
+        <div class="card mb-4" *ngIf="readiness$ | async as r">
+          <div class="card__header"><span class="card__title">Progress Toward Next Belt</span></div>
+          <div class="card__body">
+            <div class="progress-grid">
+              <div *ngFor="let t of trackOrder" class="progress-item">
+                <span class="progress-icon">{{ trackIcon[t] }}</span>
+                <span class="text-muted text-sm">{{ trackLabel[t] }}</span>
+                <span class="badge" [class.badge--success]="r.tracks[t].effectiveResult === 'pass'"
+                  [class.badge--warning]="r.tracks[t].effectiveResult === 'fail'"
+                  [class.badge--gray]="!r.tracks[t].effectiveResult">
+                  {{ r.tracks[t].effectiveResult ?? 'Not yet evaluated' }}
+                </span>
+              </div>
+              <div class="progress-item">
+                <span class="progress-icon">🎓</span>
+                <span class="text-muted text-sm">Seminar Points</span>
+                <span class="badge" [class.badge--success]="r.seminarPoints >= r.seminarPointsRequired" [class.badge--gray]="r.seminarPoints < r.seminarPointsRequired">
+                  {{ r.seminarPoints }} / {{ r.seminarPointsRequired }}
+                </span>
+              </div>
+            </div>
+            <div *ngIf="r.isReady" class="ready-banner">🎉 All requirements met — ready for promotion!</div>
+          </div>
+        </div>
+        <div class="card" *ngIf="roadmap$ | async as roadmap">
+          <div class="card__header"><span class="card__title">Curriculum Roadmap</span></div>
+          <div class="card__body">
+            <dojo-empty-state *ngIf="roadmap.length === 0" icon="🗺️" title="No roadmap configured yet"
+              subtitle="Your dojo hasn't set up a curriculum roadmap for this discipline."></dojo-empty-state>
+            <dojo-roadmap *ngIf="roadmap.length" [belts]="roadmap" [currentBeltId]="s.currentBeltId"></dojo-roadmap>
+          </div>
+        </div>
+      </ng-container>
+
       <!-- Comments tab -->
       <ng-container *ngIf="activeTab() === 'comments'">
         <div class="card">
@@ -257,6 +295,12 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'comments';
                 margin-bottom:-1px; transition:color .15s,border-color .15s;
                 &:hover { color:var(--text); }
                 &.active { color:var(--accent); border-bottom-color:var(--accent); } }
+    .progress-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; }
+    .progress-item  { display:flex; flex-direction:column; align-items:flex-start; gap:6px;
+                       padding:12px; background:var(--surface-2); border-radius:var(--radius-md); }
+    .progress-icon  { font-size:18px; }
+    .ready-banner   { margin-top:16px; padding:12px 16px; border-radius:var(--radius-md);
+                       background:#dcfce7; color:#166534; font-weight:600; font-size:13px; }
   `]
 })
 export class ChildProgressComponent implements OnInit {
@@ -266,6 +310,7 @@ export class ChildProgressComponent implements OnInit {
   private sts   = inject(StudentService);
   private as_   = inject(AttendanceService);
   private bs    = inject(BeltService);
+  private es    = inject(EvaluationService);
 
   children$!:   Observable<Student[]>;
   student$!:    Observable<Student | undefined>;
@@ -273,6 +318,12 @@ export class ChildProgressComponent implements OnInit {
   attendance$!: Observable<AttendanceRecord[]>;
   beltHistory$!:Observable<BeltHistory[]>;
   objectives$!: Observable<StudentObjective[]>;
+  roadmap$!:    Observable<Belt[]>;
+  readiness$!:  Observable<PromotionReadiness>;
+
+  trackOrder = ['striking', 'grappling', 'selfdefense'] as const;
+  trackIcon: Record<string, string>  = { striking: '🥊', grappling: '🤼', selfdefense: '🛡️' };
+  trackLabel: Record<string, string> = { striking: 'Striking', grappling: 'Grappling', selfdefense: 'Self-Defense' };
 
   activeTab  = signal<Tab>('overview');
   selectedId = signal<string>('');
@@ -292,6 +343,7 @@ export class ChildProgressComponent implements OnInit {
     { key: 'skills'     as Tab, icon: '📊',  label: 'Skills' },
     { key: 'attendance' as Tab, icon: '✓',   label: 'Attendance' },
     { key: 'belt'       as Tab, icon: '🥋',  label: 'Belt Journey' },
+    { key: 'roadmap'    as Tab, icon: '🗺️',  label: 'Roadmap' },
     { key: 'comments'   as Tab, icon: '💬',  label: 'Coach Notes' },
   ];
 
@@ -316,7 +368,11 @@ export class ChildProgressComponent implements OnInit {
     this.attendance$  = this.as_.byStudent$(id);
     this.beltHistory$ = this.bs.history$(id);
     this.objectives$  = this.bs.objectives$(id);
+    this.readiness$   = this.es.readiness$(id);
     this.attendance$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(r => this.attPct.set(this.calcAttPct(r)));
+    this.student$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(s => {
+      this.roadmap$ = s?.disciplineId ? this.bs.roadmap$(s.disciplineId) : of([]);
+    });
   }
 
   // ── Helpers ─────────────────────────────────────────────────
