@@ -47,8 +47,8 @@ import { calcAge } from '../../../core/utils';
                 </div>
               </td>
               <td>{{ age(s) }}</td>
-              <td>{{ s.disciplineId }}</td>
-              <td><span class="badge badge--accent">{{ s.currentBeltId || '—' }}</span></td>
+              <td>{{ s.disciplineName || '—' }}</td>
+              <td><span class="badge badge--accent">{{ s.beltName || '—' }}</span></td>
               <td class="text-muted">{{ s.enrolledAt | date:'MMM y' }}</td>
             </tr>
           </tbody>
@@ -74,7 +74,7 @@ export class StaffStudentsComponent implements OnInit {
     if (!q) return all;
     return all.filter(s =>
       `${s.firstName} ${s.lastName}`.toLowerCase().includes(q) ||
-      s.disciplineId?.toLowerCase().includes(q)
+      s.disciplineName?.toLowerCase().includes(q)
     );
   }
 }

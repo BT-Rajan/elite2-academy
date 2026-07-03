@@ -114,7 +114,7 @@ type ReportTab = 'overview' | 'attendance' | 'students' | 'loyalty';
             <tbody>
               <tr *ngFor="let s of students">
                 <td><strong>{{ s.firstName }} {{ s.lastName }}</strong></td>
-                <td><span class="badge badge--accent">{{ s.currentBeltId || '—' }}</span></td>
+                <td><span class="badge badge--accent">{{ s.beltName || '—' }}</span></td>
                 <td style="text-align:center;color:var(--success)">—</td>
                 <td style="text-align:center;color:var(--warning)">—</td>
                 <td style="text-align:center;color:var(--danger)">—</td>
@@ -142,8 +142,8 @@ type ReportTab = 'overview' | 'attendance' | 'students' | 'loyalty';
             <tbody>
               <tr *ngFor="let s of students">
                 <td><strong>{{ s.firstName }} {{ s.lastName }}</strong></td>
-                <td class="text-muted">{{ s.disciplineId }}</td>
-                <td><span class="badge badge--accent">{{ s.currentBeltId || 'No belt' }}</span></td>
+                <td class="text-muted">{{ s.disciplineName || '—' }}</td>
+                <td><span class="badge badge--accent">{{ s.beltName || 'No belt' }}</span></td>
                 <td class="text-muted">{{ s.enrolledAt | date:'MMM d, y' }}</td>
                 <td>
                   <span class="badge" [class.badge--success]="s.isActive" [class.badge--gray]="!s.isActive">
@@ -222,7 +222,7 @@ export class ReportsComponent implements OnInit {
   beltDistribution(students: Student[]) {
     const map = new Map<string, number>();
     students.forEach(s => {
-      const b = s.currentBeltId || 'No belt';
+      const b = s.beltName || 'No belt';
       map.set(b, (map.get(b) ?? 0) + 1);
     });
     const max = Math.max(...map.values(), 1);

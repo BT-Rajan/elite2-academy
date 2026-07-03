@@ -35,8 +35,8 @@ import { LOYALTY_TIER_COLORS } from '../../../core/utils';
             <dojo-avatar [name]="s.firstName + ' ' + s.lastName" size="lg"></dojo-avatar>
             <div>
               <div style="font-size:16px;font-weight:700">{{ s.firstName }} {{ s.lastName }}</div>
-              <div class="text-muted text-sm" style="margin-top:4px">{{ s.disciplineId }}</div>
-              <div class="badge badge--accent" style="margin-top:8px">Belt: {{ s.currentBeltId }}</div>
+              <div class="text-muted text-sm" style="margin-top:4px">{{ s.disciplineName || 'No discipline' }}</div>
+              <div class="badge badge--accent" style="margin-top:8px">Belt: {{ s.beltName || 'No belt' }}</div>
             </div>
           </div>
         </div>

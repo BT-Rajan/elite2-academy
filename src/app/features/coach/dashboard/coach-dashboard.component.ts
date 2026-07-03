@@ -62,7 +62,7 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
             <dojo-avatar [name]="s.firstName + ' ' + s.lastName" size="sm"></dojo-avatar>
             <div>
               <div style="font-size:13px;font-weight:500">{{ s.firstName }} {{ s.lastName }}</div>
-              <div class="text-muted text-sm">{{ s.disciplineId }}</div>
+              <div class="text-muted text-sm">{{ s.disciplineName || 'No discipline' }}</div>
             </div>
           </div>
         </div>

@@ -48,11 +48,11 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
           <div style="flex:1">
             <h2 style="font-size:22px;font-weight:700;margin-bottom:4px">{{ s.firstName }} {{ s.lastName }}</h2>
             <div class="text-muted" style="margin-bottom:8px">
-              {{ s.disciplineId }} · Age {{ age(s) }} · Enrolled {{ s.enrolledAt | date:'MMM y' }}
+              {{ s.disciplineName || 'No discipline' }} · Age {{ age(s) }} · Enrolled {{ s.enrolledAt | date:'MMM y' }}
             </div>
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
               <span class="badge badge--accent" style="font-size:13px;padding:4px 12px">
-                🥋 {{ s.currentBeltId || 'No belt yet' }}
+                🥋 {{ s.beltName || 'No belt yet' }}
               </span>
               <span *ngIf="attPct() !== null" class="badge"
                 [class.badge--success]="attPct()! >= 80"

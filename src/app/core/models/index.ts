@@ -48,6 +48,12 @@ export interface Student {
   enrolledAt: Date;
   mbClientId?: string;
   isActive: boolean;
+  // Joined for display — returned by GET /students and /students/:id, not
+  // stored on the row itself. Prefer these over disciplineId/currentBeltId
+  // whenever showing a student in a list; the raw IDs aren't meaningful to look at.
+  beltName?: string;
+  colorHex?: string;
+  disciplineName?: string;
 }
 
 export interface Discipline {

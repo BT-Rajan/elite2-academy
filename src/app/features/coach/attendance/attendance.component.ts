@@ -1,14 +1,13 @@
-import { Component, inject, signal, OnInit, computed } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule, AsyncPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink, ActivatedRoute } from '@angular/router';
-import { Observable, switchMap, of } from 'rxjs';
+import { RouterLink, ActivatedRoute, Router } from '@angular/router';
+import { Observable } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
 import { SessionService } from '../../../core/services/session.service';
 import { AttendanceService } from '../../../core/services/attendance.service';
 import { StudentService } from '../../../core/services/student.service';
 import { ClassSession, AttendanceRecord, Student, AttendanceStatus } from '../../../core/models';
-import { ATTENDANCE_LABELS } from '../../../core/utils';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { BadgeComponent } from '../../../shared/components/badge/badge.component';
@@ -24,8 +23,11 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
       <button class="btn btn--primary" (click)="openNewSession()" *ngIf="!activeSession()">
         + Open Session
       </button>
-      <button class="btn btn--danger" (click)="closeSession()" *ngIf="activeSession()">
+      <button class="btn btn--danger" (click)="closeSession()" *ngIf="activeSession() && !activeSession()!.isClosed">
         ✓ Close Session
+      </button>
+      <button class="btn btn--secondary" (click)="activeSession.set(null)" *ngIf="activeSession()?.isClosed">
+        ← Back to list
       </button>
     </dojo-page-header>
 
@@ -65,7 +67,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
       </div>
     </div>
 
-    <!-- Active session — take attendance -->
+    <!-- Active / viewed session — take attendance, or review if closed -->
     <div class="card mb-4" *ngIf="activeSession() as session">
       <div class="card__header">
         <div>
@@ -74,7 +76,9 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
             {{ session.date | date:'EEE, MMM d' }} · {{ session.startTime }}–{{ session.endTime }} · {{ session.location }}
           </div>
         </div>
-        <span class="badge badge--success">Open</span>
+        <span class="badge" [class]="session.isClosed ? 'badge--gray' : 'badge--success'">
+          {{ session.isClosed ? 'Closed — read only' : 'Open' }}
+        </span>
       </div>
       <div class="card__body" style="padding:0">
         <div *ngIf="students$ | async as students">
@@ -86,9 +90,9 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
             <dojo-avatar [name]="s.firstName + ' ' + s.lastName" size="sm"></dojo-avatar>
             <div style="flex:1;min-width:0">
               <div class="font-bold" style="font-size:13px">{{ s.firstName }} {{ s.lastName }}</div>
-              <div class="text-muted text-sm">{{ s.disciplineId }}</div>
+              <div class="text-muted text-sm">{{ s.disciplineName || 'No discipline' }}</div>
             </div>
-            <div class="status-btns">
+            <div class="status-btns" *ngIf="!session.isClosed">
               <button *ngFor="let opt of statusOpts"
                 class="btn btn--sm"
                 [class.btn--primary]="getStatus(s.id) === opt.value"
@@ -97,13 +101,17 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
                 {{ opt.label }}
               </button>
             </div>
+            <!-- Closed session: show the recorded status only, nothing to click -->
+            <span *ngIf="session.isClosed" class="badge" [class]="statusBadgeClass(getStatus(s.id))">
+              {{ statusLabel(getStatus(s.id)) }}
+            </span>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Past sessions -->
-    <div class="card">
+    <div class="card" *ngIf="!activeSession()">
       <div class="card__header"><span class="card__title">Past Sessions</span></div>
       <div *ngIf="sessions$ | async as sessions">
         <dojo-empty-state *ngIf="sessions.length === 0"
@@ -114,7 +122,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
             <tr><th>Class</th><th>Date</th><th>Time</th><th>Status</th><th></th></tr>
           </thead>
           <tbody>
-            <tr *ngFor="let s of sessions">
+            <tr *ngFor="let s of sessions" class="clickable-row" (click)="viewSession(s)">
               <td><strong>{{ s.className }}</strong></td>
               <td>{{ s.date | date:'MMM d, y' }}</td>
               <td class="text-muted">{{ s.startTime }}–{{ s.endTime }}</td>
@@ -123,9 +131,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
                   {{ s.isClosed ? 'Closed' : 'Open' }}
                 </span>
               </td>
-              <td>
-                <button class="btn btn--ghost btn--sm" (click)="viewSession(s)">View</button>
-              </td>
+              <td class="text-muted" style="text-align:right">{{ s.isClosed ? 'Review →' : 'Continue →' }}</td>
             </tr>
           </tbody>
         </table>
@@ -139,10 +145,14 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
       &:last-child { border-bottom: none; }
     }
     .status-btns { display: flex; gap: 4px; flex-wrap: wrap; }
+    .clickable-row { cursor: pointer; transition: background .1s; }
+    .clickable-row:hover { background: var(--surface-2); }
   `]
 })
 export class AttendanceComponent implements OnInit {
   private auth    = inject(AuthService);
+  private route   = inject(ActivatedRoute);
+  private router  = inject(Router);
   private ss      = inject(SessionService);
   private as_     = inject(AttendanceService);
   private sts     = inject(StudentService);
@@ -155,7 +165,7 @@ export class AttendanceComponent implements OnInit {
   saving         = signal(false);
   formError      = signal('');
 
-  // Map studentId → status for the active session
+  // Map studentId → status for the currently viewed/active session
   private statusMap = signal<Record<string, AttendanceStatus>>({});
 
   readonly statusOpts = [
@@ -173,6 +183,12 @@ export class AttendanceComponent implements OnInit {
     const dojoId   = this.auth.currentUser()!.dojoId;
     this.sessions$ = this.ss.byCoach$(coachUid);
     this.students$ = this.sts.byDojo$(dojoId);
+
+    // Deep link support — e.g. from the admin dashboard's Recent Sessions.
+    const sessionId = this.route.snapshot.queryParamMap.get('sessionId');
+    if (sessionId) {
+      this.ss.get$(sessionId).subscribe(s => this.viewSession(s));
+    }
   }
 
   openNewSession() { this.showNewForm.set(true); this.formError.set(''); }
@@ -191,6 +207,7 @@ export class AttendanceComponent implements OnInit {
       location: this.newSession.location,
       isClosed: false,
     });
+    this.statusMap.set({});
     this.activeSession.set(session);
     this.showNewForm.set(false);
     this.saving.set(false);
@@ -221,7 +238,32 @@ export class AttendanceComponent implements OnInit {
     // — do not award again here to avoid double-counting.
   }
 
+  statusBadgeClass(status: AttendanceStatus | null): string {
+    switch (status) {
+      case 'present': return 'badge--success';
+      case 'late':     return 'badge--warning';
+      case 'excused':  return 'badge--info';
+      case 'absent':   return 'badge--danger';
+      default:         return 'badge--gray';
+    }
+  }
+
+  statusLabel(status: AttendanceStatus | null): string {
+    return this.statusOpts.find(o => o.value === status)?.label ?? 'Not marked';
+  }
+
+  // Open any session for viewing — editable if still open, read-only once
+  // closed. Also preloads whatever attendance was already recorded so the
+  // roster reflects reality instead of resetting to blank.
   viewSession(s: ClassSession) {
-    if (!s.isClosed) this.activeSession.set(s);
+    this.activeSession.set(s);
+    this.as_.bySession$(String(s.id)).subscribe(records => {
+      const map: Record<string, AttendanceStatus> = {};
+      for (const r of records) { map[String(r.studentId)] = r.status; }
+      this.statusMap.set(map);
+    });
+    // Reflect the deep link in the URL without a full navigation, so a
+    // refresh or share of the link lands back on the same session.
+    this.router.navigate([], { relativeTo: this.route, queryParams: { sessionId: s.id }, replaceUrl: true });
   }
 }
