@@ -3,6 +3,7 @@
 Pure PHP backend for the Dojo Platform Angular app. Runs on XAMPP.
 
 **Requires PHP 8.1+** (the code uses `never` return types and `array_is_list()`).
+**Requires the `gd` extension** (avatar photo uploads are re-encoded through GD to strip any embedded metadata/payload from the original file — enabled by default in most PHP builds, including XAMPP).
 Check your XAMPP's PHP version with `php -v`.
 
 ## Setup

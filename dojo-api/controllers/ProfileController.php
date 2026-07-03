@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../core/Database.php';
 require_once __DIR__ . '/../core/Response.php';
 require_once __DIR__ . '/../middleware/Auth.php';
+require_once __DIR__ . '/../core/Validator.php';
 
 /**
  * ProfileController — self-service profile management, available to every
@@ -34,15 +35,19 @@ class ProfileController {
     public function update(): never {
         $auth = AuthMiddleware::require();
         $b    = $this->body();
+        Validator::make($b)
+            ->required('firstName')->string('firstName', 1, 60)
+            ->required('lastName')->string('lastName', 1, 60)
+            ->required('email')->email('email')
+            ->string('phone', 0, 30)
+            ->string('salutation', 0, 10)
+            ->check();
 
         $salutation = trim($b['salutation'] ?? '');
         $firstName  = trim($b['firstName']  ?? '');
         $lastName   = trim($b['lastName']   ?? '');
         $phone      = trim($b['phone']      ?? '');
         $email      = trim($b['email']      ?? '');
-
-        if (!$firstName || !$lastName) Response::error('First and family name are required.');
-        if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) Response::error('A valid email is required.');
 
         // Email must stay unique across the platform (excluding this user).
         $dupe = $this->db->prepare("SELECT id FROM users WHERE email = ? AND uid != ?");
@@ -78,6 +83,26 @@ class ProfileController {
         if (!isset(self::ALLOWED_MIME[$mime]))
             Response::error('Photo must be a JPG, PNG, or WEBP image.');
 
+        // finfo checks magic bytes, but a crafted file can still pass that
+        // check while not being a structurally valid image (e.g. a polyglot
+        // with embedded PHP/HTML). getimagesize() actually parses the image
+        // header and fails on anything that isn't real image data.
+        $info = @getimagesize($file['tmp_name']);
+        if ($info === false)
+            Response::error('That file is not a valid image.');
+
+        // Re-encode through GD rather than saving the uploaded bytes
+        // verbatim. This produces a clean image with no embedded metadata,
+        // comments, or trailing payload the original file might carry,
+        // regardless of what passed the MIME/header checks above.
+        $image = match ($mime) {
+            'image/jpeg' => @imagecreatefromjpeg($file['tmp_name']),
+            'image/png'  => @imagecreatefrompng($file['tmp_name']),
+            'image/webp' => @imagecreatefromwebp($file['tmp_name']),
+            default      => false,
+        };
+        if (!$image) Response::error('That file could not be processed as an image.');
+
         $dir = __DIR__ . '/../uploads/avatars';
         if (!is_dir($dir)) mkdir($dir, 0755, true);
 
@@ -86,8 +111,15 @@ class ProfileController {
 
         $filename = $auth['uid'] . '_' . bin2hex(random_bytes(6)) . '.' . self::ALLOWED_MIME[$mime];
         $dest     = $dir . '/' . $filename;
-        if (!move_uploaded_file($file['tmp_name'], $dest))
-            Response::error('Could not save the uploaded photo.', 500);
+
+        $saved = match ($mime) {
+            'image/jpeg' => imagejpeg($image, $dest, 88),
+            'image/png'  => imagepng($image, $dest, 6),
+            'image/webp' => imagewebp($image, $dest, 88),
+            default      => false,
+        };
+        imagedestroy($image);
+        if (!$saved) Response::error('Could not save the uploaded photo.', 500);
 
         $url = $this->publicBaseUrl() . '/uploads/avatars/' . $filename;
         $this->db->prepare("UPDATE users SET avatar_url = ? WHERE uid = ?")->execute([$url, $auth['uid']]);

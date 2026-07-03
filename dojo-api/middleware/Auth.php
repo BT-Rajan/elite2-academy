@@ -7,16 +7,14 @@ require_once __DIR__ . '/../core/ErrorMessages.php';
 require_once __DIR__ . '/../core/Database.php';
 
 class AuthMiddleware {
+    /** Best-effort uid of the current request, set once authenticate() runs, for request logging. */
+    public static ?string $lastUid = null;
 
-    /**
-     * Decodes and validates the token's signature/expiry/version only.
-     * Does NOT enforce approval status — use this for the handful of
-     * endpoints a pending user must still be able to call (/auth/me,
-     * /auth/logout) so they can see their own pending state.
-     */
     public static function authenticate(): array {
         $payload = JWT::fromRequest();
         if (!$payload) Response::unauthorized(ErrorMessages::get('auth.token_required'));
+
+        self::$lastUid = $payload['uid'] ?? null;
 
         // JWT revocation: every issued token embeds the tokenVersion that was
         // current at issuance. Logging out, changing password, or an admin

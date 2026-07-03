@@ -7,6 +7,7 @@ require_once __DIR__ . '/../core/Response.php';
 require_once __DIR__ . '/../core/Mailer.php';
 require_once __DIR__ . '/../core/ErrorMessages.php';
 require_once __DIR__ . '/../core/RateLimiter.php';
+require_once __DIR__ . '/../core/Validator.php';
 require_once __DIR__ . '/../middleware/Auth.php';
 
 class AuthController {
@@ -26,20 +27,19 @@ class AuthController {
     // staff or admin.
     public function register(): never {
         $b = $this->body();
-        $email       = trim($b['email']       ?? '');
-        $password    = trim($b['password']    ?? '');
-        $displayName = trim($b['displayName'] ?? '');
-        $role        = $b['role']   ?? 'parent';
-        $dojoId      = trim($b['dojoId'] ?? '');
+        Validator::make($b)
+            ->required('email')->email('email')
+            ->required('password')->string('password', 6, 100)
+            ->required('displayName')->string('displayName', 1, 100)
+            ->required('dojoId')->string('dojoId', 1, 50)
+            ->in('role', ['admin', 'coach', 'parent', 'staff'])
+            ->check();
 
-        if (!$email || !$password || !$displayName || !$dojoId)
-            Response::error('email, password, displayName and dojoId are required.');
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL))
-            Response::error('Invalid email address.');
-        if (strlen($password) < 6)
-            Response::error('Password must be at least 6 characters.');
-        if (!in_array($role, ['admin','coach','parent','staff'], true))
-            Response::error('Invalid role.');
+        $email       = trim($b['email']);
+        $password    = trim($b['password']);
+        $displayName = trim($b['displayName']);
+        $role        = $b['role'] ?? 'parent';
+        $dojoId      = trim($b['dojoId']);
 
         // Check duplicate
         $exists = $this->db->prepare("SELECT id FROM users WHERE email = ?");
@@ -79,10 +79,9 @@ class AuthController {
     // POST /auth/login
     public function login(): never {
         $b        = $this->body();
-        $email    = trim($b['email']    ?? '');
-        $password = trim($b['password'] ?? '');
-
-        if (!$email || !$password) Response::error('email and password required.');
+        Validator::make($b)->required('email')->required('password')->check();
+        $email    = trim($b['email']);
+        $password = trim($b['password']);
 
         $limiter = new RateLimiter($this->db);
         $lockedForMinutes = $limiter->checkLocked($email);
@@ -120,8 +119,8 @@ class AuthController {
     // POST /auth/forgot-password
     public function forgotPassword(): never {
         $b     = $this->body();
-        $email = trim($b['email'] ?? '');
-        if (!$email) Response::error('email required.');
+        Validator::make($b)->required('email')->email('email')->check();
+        $email = trim($b['email']);
 
         $stmt = $this->db->prepare("SELECT uid FROM users WHERE email = ?");
         $stmt->execute([$email]);
@@ -145,11 +144,12 @@ class AuthController {
     // POST /auth/reset-password
     public function resetPassword(): never {
         $b        = $this->body();
-        $token    = trim($b['token']    ?? '');
-        $password = trim($b['password'] ?? '');
-
-        if (!$token || !$password) Response::error('token and password required.');
-        if (strlen($password) < 6)  Response::error('Password must be at least 6 characters.');
+        Validator::make($b)
+            ->required('token')
+            ->required('password')->string('password', 6, 100)
+            ->check();
+        $token    = trim($b['token']);
+        $password = trim($b['password']);
 
         $stmt = $this->db->prepare("
             SELECT email FROM password_resets

@@ -5,6 +5,7 @@ require_once __DIR__ . '/../core/Database.php';
 require_once __DIR__ . '/../core/Response.php';
 require_once __DIR__ . '/../core/Mailer.php';
 require_once __DIR__ . '/../core/Tenant.php';
+require_once __DIR__ . '/../core/Validator.php';
 require_once __DIR__ . '/../middleware/Auth.php';
 
 class StudentController {
@@ -48,6 +49,14 @@ class StudentController {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireRole($auth, 'admin');
         $b = $this->body();
+        Validator::make($b)
+            ->required('parentUid')
+            ->required('firstName')->string('firstName', 1, 60)
+            ->required('lastName')->string('lastName', 1, 60)
+            ->date('dob')
+            ->in('gender', ['M', 'F', 'Other'])
+            ->int('disciplineId')
+            ->check();
         $stmt = $this->db->prepare("
             INSERT INTO students (dojo_id, parent_uid, first_name, last_name, dob, gender, discipline_id)
             VALUES (?, ?, ?, ?, ?, ?, ?)");
@@ -66,6 +75,14 @@ class StudentController {
         AuthMiddleware::requireRole($auth, 'admin', 'coach');
         Tenant::student($this->db, $auth, $id);
         $b = $this->body();
+        Validator::make($b)
+            ->required('firstName')->string('firstName', 1, 60)
+            ->required('lastName')->string('lastName', 1, 60)
+            ->date('dob')
+            ->in('gender', ['M', 'F', 'Other'])
+            ->int('disciplineId')
+            ->int('currentBeltId')
+            ->check();
         $this->db->prepare("
             UPDATE students SET first_name=?, last_name=?, dob=?, gender=?,
             discipline_id=?, current_belt_id=? WHERE id=?")

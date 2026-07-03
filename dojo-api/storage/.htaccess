@@ -1,0 +1,2 @@
+# Nothing under storage/ is ever meant to be served directly.
+Require all denied

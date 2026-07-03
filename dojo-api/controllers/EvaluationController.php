@@ -4,6 +4,8 @@ declare(strict_types=1);
 require_once __DIR__ . '/../core/Database.php';
 require_once __DIR__ . '/../core/Response.php';
 require_once __DIR__ . '/../core/Tenant.php';
+require_once __DIR__ . '/../core/Audit.php';
+require_once __DIR__ . '/../core/Validator.php';
 require_once __DIR__ . '/../middleware/Auth.php';
 
 /**
@@ -39,13 +41,10 @@ class EvaluationController {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireRole($auth, 'admin', 'coach');
         $b = $this->body();
-
-        if (!in_array($b['track'] ?? '', ['striking', 'grappling', 'selfdefense'], true)) {
-            Response::error('track must be striking, grappling, or selfdefense.');
-        }
-        if (!in_array($b['result'] ?? '', ['pass', 'fail'], true)) {
-            Response::error('result must be pass or fail.');
-        }
+        Validator::make($b)
+            ->required('track')->in('track', ['striking', 'grappling', 'selfdefense'])
+            ->required('result')->in('result', ['pass', 'fail'])
+            ->check();
 
         $student = Tenant::student($this->db, $auth, $studentId);
         if (!$student['current_belt_id']) Response::error('Student has no current belt to evaluate against.', 422);
@@ -97,6 +96,9 @@ class EvaluationController {
             SET overruled_by=?, overruled_by_name=?, overrule_result=?, overrule_notes=?, overruled_at=NOW()
             WHERE id=?")
             ->execute([$auth['uid'], $b['overruledByName'] ?? '', $b['result'], trim($b['notes']), $evalId]);
+        Audit::log($this->db, $auth, 'evaluation.overrule', 'evaluation', (string)$evalId, [
+            'result' => $b['result'], 'notes' => trim($b['notes']),
+        ]);
 
         Response::ok(['updated' => true]);
     }
@@ -154,6 +156,12 @@ class EvaluationController {
             ? ($b['notes'] ?? null)
             : trim('Promoted by override. ' . ($b['overrideNotes'] ?? ''));
 
+        if (!$readiness['isReady']) {
+            Audit::log($this->db, $auth, 'promotion.override', 'student', (string)$studentId, [
+                'toBelt' => $nextBelt['name'], 'reason' => $b['overrideNotes'] ?? '',
+            ]);
+        }
+
         $this->db->prepare("
             INSERT INTO belt_history (student_id, belt_id, belt_name, awarded_by, notes)
             VALUES (?,?,?,?,?)")
@@ -179,6 +187,7 @@ class EvaluationController {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireRole($auth, 'admin', 'coach');
         $b = $this->body();
+        Validator::make($b)->required('points')->int('points')->check();
         $points = (int)($b['points'] ?? 0);
         if ($points === 0) Response::error('points must be a non-zero integer.');
         Tenant::student($this->db, $auth, $studentId);

@@ -37,6 +37,27 @@ CREATE TABLE IF NOT EXISTS login_attempts (
   updated_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS audit_log (
+  id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  actor_uid   VARCHAR(36) NULL,
+  actor_role  VARCHAR(20) NULL,
+  dojo_id     VARCHAR(50) NULL,
+  action      VARCHAR(60) NOT NULL,
+  target_type VARCHAR(40) NOT NULL,
+  target_id   VARCHAR(60) NOT NULL,
+  meta        JSON NULL,
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_dojo_action (dojo_id, action),
+  INDEX idx_target (target_type, target_id)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS api_rate_limits (
+  identifier   VARCHAR(120) NOT NULL,
+  window_start INT UNSIGNED NOT NULL,
+  count        INT UNSIGNED NOT NULL DEFAULT 0,
+  PRIMARY KEY (identifier, window_start)
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS dojos (
   id         VARCHAR(50) PRIMARY KEY,
   name       VARCHAR(120) NOT NULL DEFAULT 'My Dojo',

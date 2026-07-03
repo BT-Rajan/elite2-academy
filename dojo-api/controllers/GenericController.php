@@ -5,6 +5,8 @@ require_once __DIR__ . '/../core/Database.php';
 require_once __DIR__ . '/../core/Response.php';
 require_once __DIR__ . '/../core/ErrorMessages.php';
 require_once __DIR__ . '/../core/Tenant.php';
+require_once __DIR__ . '/../core/Audit.php';
+require_once __DIR__ . '/../core/Validator.php';
 require_once __DIR__ . '/../middleware/Auth.php';
 
 /**
@@ -30,6 +32,7 @@ class GenericController {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireRole($auth, 'admin');
         $b = $this->body();
+        Validator::make($b)->required('name')->string('name', 1, 100)->hexColor('color')->check();
         $this->db->prepare("INSERT INTO disciplines (dojo_id, name, description, color) VALUES (?,?,?,?)")
             ->execute([$auth['dojoId'], $b['name'] ?? '', $b['description'] ?? null, $b['color'] ?? '#6366f1']);
         Response::created(['id' => $this->db->lastInsertId()]);
@@ -55,6 +58,14 @@ class GenericController {
         AuthMiddleware::requireRole($auth, 'admin');
         Tenant::discipline($this->db, $auth, $discId);
         $b = $this->body();
+        Validator::make($b)
+            ->required('name')->string('name', 1, 60)
+            ->hexColor('colorHex')
+            ->int('sortOrder', 1, 100)
+            ->int('minClasses', 0)
+            ->int('minScore', 0)
+            ->int('seminarPointsRequired', 0)
+            ->check();
         $this->db->prepare("
             INSERT INTO belts (discipline_id, name, color_hex, sort_order, min_classes, min_score,
                                 kickboxing_level, bjj_stripe_label, seminar_points_required)
@@ -101,6 +112,12 @@ class GenericController {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireRole($auth, 'admin', 'coach');
         $b = $this->body();
+        Validator::make($b)
+            ->required('name')->string('name', 1, 100)
+            ->int('dayOfWeek', 0, 6)
+            ->time('startTime')
+            ->time('endTime')
+            ->check();
         $this->db->prepare("INSERT INTO schedules (dojo_id, discipline_id, coach_uid, name, day_of_week, start_time, end_time, location) VALUES (?,?,?,?,?,?,?,?)")
             ->execute([$auth['dojoId'], $b['disciplineId'] ?? null, $b['coachUid'] ?? $auth['uid'], $b['name'] ?? 'Class', $b['dayOfWeek'] ?? 0, $b['startTime'] ?? '09:00', $b['endTime'] ?? '10:00', $b['location'] ?? null]);
         Response::created(['id' => $this->db->lastInsertId()]);
@@ -228,6 +245,12 @@ class GenericController {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireRole($auth, 'admin');
         $b = $this->body();
+        Validator::make($b)
+            ->required('name')->string('name', 1, 100)
+            ->required('pointsCost')->int('pointsCost', 1)
+            ->in('type', ['discount', 'free_class', 'merchandise', 'custom'])
+            ->int('discountPct', 0, 100)
+            ->check();
         $this->db->prepare("INSERT INTO loyalty_rewards (dojo_id, name, description, points_cost, type, discount_pct, is_active) VALUES (?,?,?,?,?,?,1)")
             ->execute([$auth['dojoId'], $b['name'] ?? '', $b['description'] ?? null, $b['pointsCost'] ?? 0, $b['type'] ?? 'custom', $b['discountPct'] ?? null]);
         Response::created(['id' => $this->db->lastInsertId()]);
@@ -306,6 +329,7 @@ class GenericController {
         if ($row['role'] !== 'coach') Response::error('Only coaches can be designated Head Coach.', 422);
         $this->db->prepare("UPDATE users SET is_head_coach = ? WHERE uid = ?")
             ->execute([!empty($b['isHeadCoach']) ? 1 : 0, $uid]);
+        Audit::log($this->db, $auth, 'user.head_coach', 'user', $uid, ['isHeadCoach' => !empty($b['isHeadCoach'])]);
         Response::ok(['updated' => true]);
     }
 
@@ -346,6 +370,7 @@ class GenericController {
         $this->db->prepare("
             UPDATE users SET approval_status = 'approved', approved_by = ?, approved_at = NOW()
             WHERE uid = ?")->execute([$auth['uid'], $uid]);
+        Audit::log($this->db, $auth, 'user.approve', 'user', $uid, ['role' => $target['role']]);
 
         $this->db->prepare("INSERT INTO notifications (uid, type, title, body) VALUES (?,?,?,?)")
             ->execute([$uid, 'system', 'Account approved', 'Your account has been approved. You now have full access.']);
@@ -371,6 +396,7 @@ class GenericController {
         $this->db->prepare("
             UPDATE users SET approval_status = 'rejected', approved_by = ?, approved_at = NOW()
             WHERE uid = ?")->execute([$auth['uid'], $uid]);
+        Audit::log($this->db, $auth, 'user.reject', 'user', $uid, ['role' => $target['role']]);
 
         Response::ok(['updated' => true]);
     }

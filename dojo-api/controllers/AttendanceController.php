@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../core/Database.php';
 require_once __DIR__ . '/../core/Response.php';
 require_once __DIR__ . '/../core/Tenant.php';
+require_once __DIR__ . '/../core/Validator.php';
 require_once __DIR__ . '/../middleware/Auth.php';
 
 class AttendanceController {
@@ -33,6 +34,12 @@ class AttendanceController {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireRole($auth, 'admin', 'coach');
         $b = $this->body();
+        Validator::make($b)
+            ->string('className', 1, 100)
+            ->date('date')
+            ->time('startTime')
+            ->time('endTime')
+            ->check();
         $this->db->prepare("
             INSERT INTO sessions (dojo_id, class_name, coach_uid, date, start_time, end_time, location)
             VALUES (?, ?, ?, ?, ?, ?, ?)")
@@ -116,6 +123,11 @@ class AttendanceController {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireRole($auth, 'admin', 'coach');
         $b = $this->body();
+        Validator::make($b)
+            ->required('sessionId')->int('sessionId', 1)
+            ->required('studentId')->int('studentId', 1)
+            ->in('status', ['present', 'late', 'excused', 'absent'])
+            ->check();
         Tenant::session($this->db, $auth, (int)($b['sessionId'] ?? 0));
         $student = Tenant::student($this->db, $auth, (int)($b['studentId'] ?? 0));
 
