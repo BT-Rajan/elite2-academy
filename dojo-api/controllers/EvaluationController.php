@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../core/Database.php';
 require_once __DIR__ . '/../core/Response.php';
+require_once __DIR__ . '/../core/Tenant.php';
 require_once __DIR__ . '/../middleware/Auth.php';
 
 /**
@@ -20,7 +21,8 @@ class EvaluationController {
     // GET /students/:id/evaluations — visible to admin/coach/parent (parent
     // sees their own child's evaluation history for transparency).
     public function list(int $studentId): never {
-        AuthMiddleware::require();
+        $auth = AuthMiddleware::require();
+        Tenant::student($this->db, $auth, $studentId);
         $stmt = $this->db->prepare("
             SELECT e.*, b.name AS belt_name
             FROM student_evaluations e
@@ -45,7 +47,7 @@ class EvaluationController {
             Response::error('result must be pass or fail.');
         }
 
-        $student = $this->getStudent($studentId);
+        $student = Tenant::student($this->db, $auth, $studentId);
         if (!$student['current_belt_id']) Response::error('Student has no current belt to evaluate against.', 422);
 
         $this->db->prepare("
@@ -82,8 +84,11 @@ class EvaluationController {
             Response::error('A reason is required when overruling an evaluation.', 422);
         }
 
-        $stmt = $this->db->prepare("SELECT * FROM student_evaluations WHERE id = ?");
-        $stmt->execute([$evalId]);
+        $stmt = $this->db->prepare("
+            SELECT e.* FROM student_evaluations e
+            JOIN students s ON s.id = e.student_id
+            WHERE e.id = ? AND s.dojo_id = ?");
+        $stmt->execute([$evalId, Tenant::dojoId($auth)]);
         $eval = $stmt->fetch();
         if (!$eval) Response::notFound('Evaluation not found.');
 
@@ -102,8 +107,8 @@ class EvaluationController {
     // requirements, per the roadmap's promotion rule: "A promotion test
     // must aggregate data from all three [tracks]."
     public function readiness(int $studentId): never {
-        AuthMiddleware::require();
-        Response::ok($this->computeReadiness($studentId));
+        $auth = AuthMiddleware::require();
+        Response::ok($this->computeReadiness($auth, $studentId));
     }
 
     // POST /students/:id/promote — advances the student to the next belt
@@ -117,10 +122,10 @@ class EvaluationController {
         AuthMiddleware::requireRole($auth, 'admin', 'coach');
         $b = $this->body();
 
-        $student = $this->getStudent($studentId);
+        $student = Tenant::student($this->db, $auth, $studentId);
         if (!$student['current_belt_id']) Response::error('Student has no current belt.', 422);
 
-        $readiness = $this->computeReadiness($studentId);
+        $readiness = $this->computeReadiness($auth, $studentId);
 
         if (!$readiness['isReady']) {
             $isOverride = ($auth['role'] ?? '') === 'admin'
@@ -176,6 +181,7 @@ class EvaluationController {
         $b = $this->body();
         $points = (int)($b['points'] ?? 0);
         if ($points === 0) Response::error('points must be a non-zero integer.');
+        Tenant::student($this->db, $auth, $studentId);
 
         $this->db->prepare("
             INSERT INTO seminar_points_log (student_id, points, reason, awarded_by, awarded_by_name)
@@ -191,7 +197,8 @@ class EvaluationController {
 
     // GET /students/:id/seminar-points
     public function seminarPointsLog(int $studentId): never {
-        AuthMiddleware::require();
+        $auth = AuthMiddleware::require();
+        Tenant::student($this->db, $auth, $studentId);
         $stmt = $this->db->prepare("SELECT * FROM seminar_points_log WHERE student_id = ? ORDER BY awarded_at DESC");
         $stmt->execute([$studentId]);
         Response::ok($stmt->fetchAll());
@@ -205,14 +212,15 @@ class EvaluationController {
     public function awardStripe(int $studentId): never {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireRole($auth, 'admin', 'coach');
+        Tenant::student($this->db, $auth, $studentId);
         $this->db->prepare("UPDATE students SET bjj_stripes = bjj_stripes + 1 WHERE id = ?")
             ->execute([$studentId]);
         Response::ok(['updated' => true]);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
-    private function computeReadiness(int $studentId): array {
-        $student = $this->getStudent($studentId);
+    private function computeReadiness(array $auth, int $studentId): array {
+        $student = Tenant::student($this->db, $auth, $studentId);
         if (!$student['current_belt_id']) {
             return ['isReady' => false, 'tracks' => [], 'seminarPoints' => 0, 'seminarPointsRequired' => 0, 'reason' => 'No current belt.'];
         }
@@ -273,13 +281,6 @@ class EvaluationController {
         return 0;
     }
 
-    private function getStudent(int $id): array {
-        $stmt = $this->db->prepare("SELECT * FROM students WHERE id = ?");
-        $stmt->execute([$id]);
-        $row = $stmt->fetch();
-        if (!$row) Response::notFound('Student not found.');
-        return $row;
-    }
 
     private function notify(string $uid, string $type, string $title, string $body): void {
         $this->db->prepare("INSERT INTO notifications (uid, type, title, body) VALUES (?,?,?,?)")

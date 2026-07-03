@@ -128,7 +128,8 @@ class ProfileController {
             Response::error('New password must be different from your current password.');
 
         $hash = password_hash($next, PASSWORD_BCRYPT, ['cost' => 12]);
-        $this->db->prepare("UPDATE users SET password = ? WHERE uid = ?")->execute([$hash, $auth['uid']]);
+        $this->db->prepare("UPDATE users SET password = ?, token_version = token_version + 1 WHERE uid = ?")
+            ->execute([$hash, $auth['uid']]);
 
         Response::ok(['message' => 'Password updated.']);
     }

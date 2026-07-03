@@ -14,6 +14,10 @@ CREATE TABLE IF NOT EXISTS users (
   first_name    VARCHAR(60),
   last_name     VARCHAR(60),
   role          ENUM('admin','coach','parent','staff') NOT NULL,
+  approval_status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+  approved_by   VARCHAR(36) NULL,
+  approved_at   DATETIME NULL,
+  token_version INT UNSIGNED NOT NULL DEFAULT 1,
   is_head_coach TINYINT(1) NOT NULL DEFAULT 0,
   dojo_id       VARCHAR(50) NOT NULL,
   avatar_url    VARCHAR(255),
@@ -21,7 +25,16 @@ CREATE TABLE IF NOT EXISTS users (
   is_active     TINYINT(1) NOT NULL DEFAULT 1,
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_dojo_role (dojo_id, role)
+  INDEX idx_dojo_role (dojo_id, role),
+  INDEX idx_approval (dojo_id, approval_status)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS login_attempts (
+  identifier       VARCHAR(120) PRIMARY KEY,
+  attempts         INT UNSIGNED NOT NULL DEFAULT 0,
+  first_attempt_at DATETIME NOT NULL,
+  locked_until     DATETIME NULL,
+  updated_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS dojos (

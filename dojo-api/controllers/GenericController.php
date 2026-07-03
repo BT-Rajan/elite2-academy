@@ -3,12 +3,17 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../core/Database.php';
 require_once __DIR__ . '/../core/Response.php';
+require_once __DIR__ . '/../core/ErrorMessages.php';
+require_once __DIR__ . '/../core/Tenant.php';
 require_once __DIR__ . '/../middleware/Auth.php';
 
 /**
  * GenericController — handles all remaining REST endpoints:
  *  disciplines, belts, schedules, threads/messages,
- *  loyalty, notifications, users, dojos
+ *  loyalty, notifications, users, dojos, account approvals.
+ *
+ * RULE (see core/Tenant.php): dojoId/uid scoping always comes from the
+ * authenticated JWT payload, never from client query/body params.
  */
 class GenericController {
     private PDO $db;
@@ -16,14 +21,9 @@ class GenericController {
 
     // ── Disciplines ───────────────────────────────────────────────────────────
     public function listDisciplines(): never {
-        $dojoId = $_GET['dojoId'] ?? '';
-        if (!$dojoId) {
-            // Authenticated fallback — use auth dojoId if not passed explicitly
-            $auth   = AuthMiddleware::require();
-            $dojoId = $auth['dojoId'];
-        }
+        $auth = AuthMiddleware::require();
         $stmt = $this->db->prepare("SELECT * FROM disciplines WHERE dojo_id = ? ORDER BY name");
-        $stmt->execute([$dojoId]);
+        $stmt->execute([Tenant::dojoId($auth)]);
         Response::ok($stmt->fetchAll());
     }
     public function createDiscipline(): never {
@@ -37,13 +37,15 @@ class GenericController {
     public function updateDiscipline(int $id): never {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireRole($auth, 'admin');
+        Tenant::discipline($this->db, $auth, $id);
         $b = $this->body();
         $this->db->prepare("UPDATE disciplines SET name=?, description=?, color=? WHERE id=? AND dojo_id=?")
             ->execute([$b['name'] ?? '', $b['description'] ?? null, $b['color'] ?? '#6366f1', $id, $auth['dojoId']]);
         Response::ok(['updated' => true]);
     }
     public function listBelts(int $discId): never {
-        AuthMiddleware::require();
+        $auth = AuthMiddleware::require();
+        Tenant::discipline($this->db, $auth, $discId);
         $stmt = $this->db->prepare("SELECT * FROM belts WHERE discipline_id = ? ORDER BY sort_order");
         $stmt->execute([$discId]);
         Response::ok($stmt->fetchAll());
@@ -51,6 +53,7 @@ class GenericController {
     public function createBelt(int $discId): never {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireRole($auth, 'admin');
+        Tenant::discipline($this->db, $auth, $discId);
         $b = $this->body();
         $this->db->prepare("
             INSERT INTO belts (discipline_id, name, color_hex, sort_order, min_classes, min_score,
@@ -66,6 +69,7 @@ class GenericController {
     public function updateBelt(int $discId, int $beltId): never {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireRole($auth, 'admin');
+        Tenant::discipline($this->db, $auth, $discId);
         $b = $this->body();
         $this->db->prepare("
             UPDATE belts SET name=?, color_hex=?, sort_order=?, min_classes=?, min_score=?,
@@ -82,16 +86,15 @@ class GenericController {
 
     // ── Schedules ─────────────────────────────────────────────────────────────
     public function listSchedules(): never {
-        $dojoId   = $_GET['dojoId']   ?? '';
+        $auth     = AuthMiddleware::require();
         $isActive = $_GET['isActive'] ?? '1';
-        if (!$dojoId) Response::error('dojoId required.');
         $stmt = $this->db->prepare("
             SELECT sc.*, d.name AS discipline_name, d.color AS discipline_color
             FROM schedules sc
             LEFT JOIN disciplines d ON d.id = sc.discipline_id
             WHERE sc.dojo_id = ? AND sc.is_active = ?
             ORDER BY sc.day_of_week, sc.start_time");
-        $stmt->execute([$dojoId, (int)$isActive]);
+        $stmt->execute([Tenant::dojoId($auth), (int)$isActive]);
         Response::ok($stmt->fetchAll());
     }
     public function createSchedule(): never {
@@ -106,20 +109,22 @@ class GenericController {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireRole($auth, 'admin', 'coach');
         $b = $this->body();
-        $this->db->prepare("UPDATE schedules SET name=?, day_of_week=?, start_time=?, end_time=?, location=?, is_active=? WHERE id=? AND dojo_id=?")
-            ->execute([$b['name'] ?? '', $b['dayOfWeek'] ?? 0, $b['startTime'] ?? '09:00', $b['endTime'] ?? '10:00', $b['location'] ?? null, (int)($b['isActive'] ?? 1), $id, $auth['dojoId']]);
+        $stmt = $this->db->prepare("UPDATE schedules SET name=?, day_of_week=?, start_time=?, end_time=?, location=?, is_active=? WHERE id=? AND dojo_id=?");
+        $stmt->execute([$b['name'] ?? '', $b['dayOfWeek'] ?? 0, $b['startTime'] ?? '09:00', $b['endTime'] ?? '10:00', $b['location'] ?? null, (int)($b['isActive'] ?? 1), $id, $auth['dojoId']]);
         Response::ok(['updated' => true]);
     }
 
     // ── Threads & Messages ────────────────────────────────────────────────────
     public function listThreads(): never {
-        $auth      = AuthMiddleware::require();
-        $coachUid  = $_GET['coachUid']  ?? null;
-        $parentUid = $_GET['parentUid'] ?? null;
-        $sql = "SELECT t.*, s.first_name AS student_first, s.last_name AS student_last FROM threads t LEFT JOIN students s ON s.id = t.student_id WHERE 1=1";
-        $p = [];
-        if ($coachUid)  { $sql .= " AND t.coach_uid = ?";  $p[] = $coachUid; }
-        if ($parentUid) { $sql .= " AND t.parent_uid = ?"; $p[] = $parentUid; }
+        $auth = AuthMiddleware::require();
+        $sql = "SELECT t.*, s.first_name AS student_first, s.last_name AS student_last
+                FROM threads t LEFT JOIN students s ON s.id = t.student_id
+                WHERE t.dojo_id = ?";
+        $p = [Tenant::dojoId($auth)];
+        // Non-admin/staff only ever see their own threads, regardless of any
+        // coachUid/parentUid the client might pass.
+        if ($auth['role'] === 'coach')  { $sql .= " AND t.coach_uid = ?";  $p[] = $auth['uid']; }
+        if ($auth['role'] === 'parent') { $sql .= " AND t.parent_uid = ?"; $p[] = $auth['uid']; }
         $sql .= " ORDER BY t.last_at DESC LIMIT 50";
         $stmt = $this->db->prepare($sql); $stmt->execute($p);
         Response::ok($stmt->fetchAll());
@@ -128,12 +133,14 @@ class GenericController {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireRole($auth, 'admin', 'coach');
         $b = $this->body();
+        Tenant::student($this->db, $auth, (int)($b['studentId'] ?? 0));
         $this->db->prepare("INSERT INTO threads (dojo_id, student_id, parent_uid, coach_uid) VALUES (?,?,?,?)")
             ->execute([$auth['dojoId'], $b['studentId'] ?? 0, $b['parentUid'] ?? '', $auth['uid']]);
         Response::created(['id' => $this->db->lastInsertId()]);
     }
     public function listMessages(int $threadId): never {
-        AuthMiddleware::require();
+        $auth = AuthMiddleware::require();
+        Tenant::thread($this->db, $auth, $threadId);
         $stmt = $this->db->prepare("
             SELECT id, thread_id, from_uid, from_name, from_role,
                    body AS text, sent_at, read_at
@@ -143,50 +150,44 @@ class GenericController {
     }
     public function sendMessage(int $threadId): never {
         $auth = AuthMiddleware::require();
+        $thread = Tenant::thread($this->db, $auth, $threadId);
         $b = $this->body();
         $this->db->prepare("INSERT INTO messages (thread_id, from_uid, from_name, from_role, body) VALUES (?,?,?,?,?)")
             ->execute([$threadId, $auth['uid'], $b['fromName'] ?? '', $auth['role'], $b['text'] ?? '']);
         $this->db->prepare("UPDATE threads SET last_message=?, last_at=NOW(), unread_parent = unread_parent + IF(?='coach',1,0), unread_coach = unread_coach + IF(?='parent',1,0) WHERE id=?")
             ->execute([substr($b['text'] ?? '', 0, 200), $auth['role'], $auth['role'], $threadId]);
-        // Notify recipient
-        $stmt = $this->db->prepare("SELECT parent_uid, coach_uid FROM threads WHERE id = ?");
-        $stmt->execute([$threadId]);
-        $t = $stmt->fetch();
-        if ($t) {
-            $recipientUid = $auth['role'] === 'coach' ? $t['parent_uid'] : $t['coach_uid'];
-            $this->db->prepare("INSERT INTO notifications (uid, type, title, body) VALUES (?,?,?,?)")
-                ->execute([$recipientUid, 'message', 'New message from ' . ($b['fromName'] ?? ''), substr($b['text'] ?? '', 0, 100)]);
-        }
+        $recipientUid = $auth['role'] === 'coach' ? $thread['parent_uid'] : $thread['coach_uid'];
+        $this->db->prepare("INSERT INTO notifications (uid, type, title, body) VALUES (?,?,?,?)")
+            ->execute([$recipientUid, 'message', 'New message from ' . ($b['fromName'] ?? ''), substr($b['text'] ?? '', 0, 100)]);
         Response::created(['id' => $this->db->lastInsertId()]);
     }
     public function markThreadRead(int $threadId): never {
         $auth = AuthMiddleware::require();
-        $b = $this->body();
-        $role = $b['role'] ?? $auth['role'];
-        $col  = $role === 'coach' ? 'unread_coach' : 'unread_parent';
+        Tenant::thread($this->db, $auth, $threadId);
+        $col = $auth['role'] === 'coach' ? 'unread_coach' : 'unread_parent';
         $this->db->prepare("UPDATE threads SET $col = 0 WHERE id = ?")->execute([$threadId]);
         Response::ok(['updated' => true]);
     }
 
     // ── Loyalty ───────────────────────────────────────────────────────────────
     public function getLoyalty(string $parentUid): never {
-        AuthMiddleware::require();
-        $stmt = $this->db->prepare("SELECT * FROM loyalty_accounts WHERE parent_uid = ?");
-        $stmt->execute([$parentUid]);
-        $row = $stmt->fetch();
-        Response::ok($row ?: null);
+        $auth = AuthMiddleware::require();
+        Tenant::assertOwnUidOrStaff($auth, $parentUid);
+        $stmt = $this->db->prepare("SELECT * FROM loyalty_accounts WHERE parent_uid = ? AND dojo_id = ?");
+        $stmt->execute([$parentUid, Tenant::dojoId($auth)]);
+        Response::ok($stmt->fetch() ?: null);
     }
     public function awardLoyalty(string $parentUid): never {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireRole($auth, 'admin', 'coach');
+        $dojoId = Tenant::dojoId($auth);
         $b      = $this->body();
-        $dojoId = $b['dojoId'] ?? $auth['dojoId'];
         $amount = (int)($b['amount'] ?? 0);
         $reason = $b['reason'] ?? 'manual';
         $note   = $b['note']   ?? null;
 
-        $acct = $this->db->prepare("SELECT id, lifetime_points FROM loyalty_accounts WHERE parent_uid = ?");
-        $acct->execute([$parentUid]);
+        $acct = $this->db->prepare("SELECT id, lifetime_points FROM loyalty_accounts WHERE parent_uid = ? AND dojo_id = ?");
+        $acct->execute([$parentUid, $dojoId]);
         $row = $acct->fetch();
 
         if ($row) {
@@ -207,9 +208,10 @@ class GenericController {
         Response::ok(['awarded' => $amount]);
     }
     public function listTransactions(string $parentUid): never {
-        AuthMiddleware::require();
-        $acct = $this->db->prepare("SELECT id FROM loyalty_accounts WHERE parent_uid = ?");
-        $acct->execute([$parentUid]);
+        $auth = AuthMiddleware::require();
+        Tenant::assertOwnUidOrStaff($auth, $parentUid);
+        $acct = $this->db->prepare("SELECT id FROM loyalty_accounts WHERE parent_uid = ? AND dojo_id = ?");
+        $acct->execute([$parentUid, Tenant::dojoId($auth)]);
         $row = $acct->fetch();
         if (!$row) Response::ok([]);
         $stmt = $this->db->prepare("SELECT * FROM loyalty_transactions WHERE account_id = ? ORDER BY created_at DESC LIMIT 50");
@@ -217,11 +219,9 @@ class GenericController {
         Response::ok($stmt->fetchAll());
     }
     public function listRewards(): never {
-        AuthMiddleware::require();
-        $dojoId = $_GET['dojoId'] ?? '';
-        if (!$dojoId) Response::error('dojoId required.');
+        $auth = AuthMiddleware::require();
         $stmt = $this->db->prepare("SELECT * FROM loyalty_rewards WHERE dojo_id = ? AND is_active = 1");
-        $stmt->execute([$dojoId]);
+        $stmt->execute([Tenant::dojoId($auth)]);
         Response::ok($stmt->fetchAll());
     }
     public function createReward(): never {
@@ -242,13 +242,15 @@ class GenericController {
     }
     public function redeemReward(string $parentUid): never {
         $auth = AuthMiddleware::require();
+        Tenant::assertOwnUidOrStaff($auth, $parentUid);
+        $dojoId = Tenant::dojoId($auth);
         $b = $this->body();
-        $reward = $this->db->prepare("SELECT * FROM loyalty_rewards WHERE id = ? AND is_active = 1");
-        $reward->execute([$b['rewardId'] ?? 0]);
+        $reward = $this->db->prepare("SELECT * FROM loyalty_rewards WHERE id = ? AND dojo_id = ? AND is_active = 1");
+        $reward->execute([$b['rewardId'] ?? 0, $dojoId]);
         $r = $reward->fetch();
         if (!$r) Response::notFound('Reward not found.');
-        $acct = $this->db->prepare("SELECT * FROM loyalty_accounts WHERE parent_uid = ?");
-        $acct->execute([$parentUid]);
+        $acct = $this->db->prepare("SELECT * FROM loyalty_accounts WHERE parent_uid = ? AND dojo_id = ?");
+        $acct->execute([$parentUid, $dojoId]);
         $a = $acct->fetch();
         if (!$a || $a['points'] < $r['points_cost']) Response::error('Insufficient points.', 400);
         $this->db->prepare("UPDATE loyalty_accounts SET points = points - ? WHERE parent_uid = ?")
@@ -259,11 +261,11 @@ class GenericController {
     }
 
     // ── Notifications ─────────────────────────────────────────────────────────
+    // Always the caller's own uid -- never a client-supplied one.
     public function listNotifications(): never {
         $auth = AuthMiddleware::require();
-        $uid = $_GET['uid'] ?? $auth['uid'];
         $stmt = $this->db->prepare("SELECT * FROM notifications WHERE uid = ? ORDER BY created_at DESC LIMIT 50");
-        $stmt->execute([$uid]);
+        $stmt->execute([$auth['uid']]);
         Response::ok($stmt->fetchAll());
     }
     public function updateNotification(int $id): never {
@@ -275,19 +277,17 @@ class GenericController {
     }
     public function markAllNotificationsRead(): never {
         $auth = AuthMiddleware::require();
-        $b = $this->body();
-        $uid = $b['uid'] ?? $auth['uid'];
-        $this->db->prepare("UPDATE notifications SET is_read=1 WHERE uid=?")->execute([$uid]);
+        $this->db->prepare("UPDATE notifications SET is_read=1 WHERE uid=?")->execute([$auth['uid']]);
         Response::ok(['updated' => true]);
     }
 
     // ── Users ─────────────────────────────────────────────────────────────────
     public function listUsers(): never {
-        $auth   = AuthMiddleware::require();
-        $dojoId = $_GET['dojoId'] ?? $auth['dojoId'];
-        $role   = $_GET['role']   ?? null;
-        $sql = "SELECT uid, email, display_name, role, is_head_coach, dojo_id, avatar_url, created_at FROM users WHERE dojo_id = ? AND is_active = 1";
-        $p = [$dojoId];
+        $auth = AuthMiddleware::require();
+        $role = $_GET['role'] ?? null;
+        $sql = "SELECT uid, email, display_name, role, is_head_coach, dojo_id, avatar_url, created_at
+                FROM users WHERE dojo_id = ? AND is_active = 1 AND approval_status = 'approved'";
+        $p = [Tenant::dojoId($auth)];
         if ($role) { $sql .= " AND role = ?"; $p[] = $role; }
         $sql .= " ORDER BY display_name";
         $stmt = $this->db->prepare($sql); $stmt->execute($p);
@@ -295,8 +295,6 @@ class GenericController {
     }
 
     // PATCH /users/:uid/head-coach — admin promotes/demotes a coach to Head Coach.
-    // Head coaches can overrule any coach's student evaluations and promotion
-    // decisions; this is the only place that flag can be changed.
     public function setHeadCoach(string $uid): never {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireRole($auth, 'admin');
@@ -311,17 +309,84 @@ class GenericController {
         Response::ok(['updated' => true]);
     }
 
+    // ── Account approvals ────────────────────────────────────────────────────
+    // GET /users/pending — staff/admin/head-coach see everyone awaiting
+    // approval in their dojo (including pending admins, so a head coach
+    // can find them without an admin having to hand-forward the request).
+    public function listPendingUsers(): never {
+        $auth = AuthMiddleware::require();
+        AuthMiddleware::requireRole($auth, 'admin', 'staff', 'coach');
+        if ($auth['role'] === 'coach' && empty($auth['isHeadCoach'])) Response::forbidden();
+        $stmt = $this->db->prepare("
+            SELECT uid, email, display_name, role, created_at
+            FROM users WHERE dojo_id = ? AND approval_status = 'pending'
+            ORDER BY created_at");
+        $stmt->execute([Tenant::dojoId($auth)]);
+        Response::ok($stmt->fetchAll());
+    }
+
+    // PATCH /users/:uid/approve
+    // Approving a pending 'admin' signup requires a Head Coach or existing
+    // Admin. Any other pending role (coach/parent/staff) can be approved by
+    // staff or admin.
+    public function approveUser(string $uid): never {
+        $auth = AuthMiddleware::require();
+        $stmt = $this->db->prepare("SELECT role, approval_status FROM users WHERE uid = ? AND dojo_id = ?");
+        $stmt->execute([$uid, Tenant::dojoId($auth)]);
+        $target = $stmt->fetch();
+        if (!$target) Response::notFound('User not found.');
+        if ($target['approval_status'] !== 'pending') Response::error('User is not pending approval.', 422);
+
+        if ($target['role'] === 'admin') {
+            AuthMiddleware::requireHeadCoach($auth);
+        } else {
+            AuthMiddleware::requireRole($auth, 'admin', 'staff');
+        }
+
+        $this->db->prepare("
+            UPDATE users SET approval_status = 'approved', approved_by = ?, approved_at = NOW()
+            WHERE uid = ?")->execute([$auth['uid'], $uid]);
+
+        $this->db->prepare("INSERT INTO notifications (uid, type, title, body) VALUES (?,?,?,?)")
+            ->execute([$uid, 'system', 'Account approved', 'Your account has been approved. You now have full access.']);
+
+        Response::ok(['updated' => true]);
+    }
+
+    // PATCH /users/:uid/reject
+    public function rejectUser(string $uid): never {
+        $auth = AuthMiddleware::require();
+        $stmt = $this->db->prepare("SELECT role, approval_status FROM users WHERE uid = ? AND dojo_id = ?");
+        $stmt->execute([$uid, Tenant::dojoId($auth)]);
+        $target = $stmt->fetch();
+        if (!$target) Response::notFound('User not found.');
+        if ($target['approval_status'] !== 'pending') Response::error('User is not pending approval.', 422);
+
+        if ($target['role'] === 'admin') {
+            AuthMiddleware::requireHeadCoach($auth);
+        } else {
+            AuthMiddleware::requireRole($auth, 'admin', 'staff');
+        }
+
+        $this->db->prepare("
+            UPDATE users SET approval_status = 'rejected', approved_by = ?, approved_at = NOW()
+            WHERE uid = ?")->execute([$auth['uid'], $uid]);
+
+        Response::ok(['updated' => true]);
+    }
+
     // ── Dojos ─────────────────────────────────────────────────────────────────
     public function getDojo(string $id): never {
         $auth = AuthMiddleware::require();
+        if ($id !== $auth['dojoId']) Response::forbidden();
         $stmt = $this->db->prepare("SELECT * FROM dojos WHERE id = ?");
         $stmt->execute([$id]);
-        $row = $stmt->fetch();
-        Response::ok($row ?: null);
+        Response::ok($stmt->fetch() ?: null);
     }
     public function updateDojo(string $id): never {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireRole($auth, 'admin');
+        if ($id !== $auth['dojoId']) Response::forbidden();
         $b = $this->body();
         $this->db->prepare("INSERT INTO dojos (id, name, email, phone, address, timezone) VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE name=VALUES(name), email=VALUES(email), phone=VALUES(phone), address=VALUES(address), timezone=VALUES(timezone)")
             ->execute([$id, $b['name'] ?? '', $b['email'] ?? null, $b['phone'] ?? null, $b['address'] ?? null, $b['timezone'] ?? 'UTC']);
@@ -330,6 +395,7 @@ class GenericController {
     public function updateDojoSettings(string $id): never {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireRole($auth, 'admin');
+        if ($id !== $auth['dojoId']) Response::forbidden();
         $b = $this->body();
         $settings = json_encode($b);
         $this->db->prepare("UPDATE dojos SET settings = JSON_MERGE_PATCH(COALESCE(settings,'{}'), ?) WHERE id=?")

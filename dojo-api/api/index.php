@@ -3,10 +3,14 @@ declare(strict_types=1);
 
 // ── CORS — must be the very first thing that runs, before anything that ────
 //    could fatal (wrong PHP version, missing extension, bad include, etc).
-//    If these headers never get sent, the browser reports a network-level
-//    failure (fetch/XHR status 0) instead of a real HTTP error, which is
-//    what "HTTP 0: Unknown Error" on the login page almost always means.
-header('Access-Control-Allow-Origin: *');
+//    Origin is checked against ALLOWED_ORIGINS in .env rather than using a
+//    wildcard, which was previously allowing any site to call this API.
+$cfg    = require __DIR__ . '/../config.php';
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if (in_array($origin, $cfg['allowed_origins'], true)) {
+    header("Access-Control-Allow-Origin: $origin");
+    header('Vary: Origin');
+}
 header('Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE,OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 header('Content-Type: application/json; charset=utf-8');
@@ -223,7 +227,10 @@ try {
 
     // Users
     if ($uri === '/users'               && $method === 'GET')    { $gc->listUsers(); }
+    if ($uri === '/users/pending'       && $method === 'GET')    { $gc->listPendingUsers(); }
     if (preg_match('#^/users/([^/]+)/head-coach$#', $uri, $m) && $method === 'PATCH') { $gc->setHeadCoach($m[1]); }
+    if (preg_match('#^/users/([^/]+)/approve$#', $uri, $m) && $method === 'PATCH') { $gc->approveUser($m[1]); }
+    if (preg_match('#^/users/([^/]+)/reject$#', $uri, $m) && $method === 'PATCH') { $gc->rejectUser($m[1]); }
 
     // Dojos
     if (preg_match('#^/dojos/([^/]+)$#', $uri, $m)) {
@@ -243,7 +250,9 @@ try {
     Response::notFound("Route not found: $method $uri");
 
 } catch (PDOException $e) {
-    Response::json(['error' => true, 'message' => 'Database error: ' . $e->getMessage()], 500);
+    require_once __DIR__ . '/../core/ErrorMessages.php';
+    Response::json(['error' => true, 'message' => ErrorMessages::logAndGet('server.database', $e)], 500);
 } catch (Throwable $e) {
-    Response::json(['error' => true, 'message' => $e->getMessage()], 500);
+    require_once __DIR__ . '/../core/ErrorMessages.php';
+    Response::json(['error' => true, 'message' => ErrorMessages::logAndGet('server.generic', $e)], 500);
 }

@@ -5,6 +5,9 @@ require_once __DIR__ . '/../core/Database.php';
 require_once __DIR__ . '/../core/JWT.php';
 require_once __DIR__ . '/../core/Response.php';
 require_once __DIR__ . '/../core/Mailer.php';
+require_once __DIR__ . '/../core/ErrorMessages.php';
+require_once __DIR__ . '/../core/RateLimiter.php';
+require_once __DIR__ . '/../middleware/Auth.php';
 
 class AuthController {
     private PDO $db;
@@ -16,6 +19,11 @@ class AuthController {
     }
 
     // POST /auth/register
+    // New accounts always start life as approval_status='pending' -- role
+    // requested is stored, but grants no access until approved. Approval of
+    // an 'admin' signup requires a Head Coach or existing Admin (enforced in
+    // GenericController::approveUser); any other role can be approved by
+    // staff or admin.
     public function register(): never {
         $b = $this->body();
         $email       = trim($b['email']       ?? '');
@@ -45,8 +53,8 @@ class AuthController {
         $lastName  = $nameParts[1] ?? '';
 
         $stmt = $this->db->prepare("
-            INSERT INTO users (uid, email, password, display_name, first_name, last_name, role, dojo_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO users (uid, email, password, display_name, first_name, last_name, role, dojo_id, approval_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')
         ");
         $stmt->execute([$uid, $email, $hash, $displayName, $firstName, $lastName, $role, $dojoId]);
 
@@ -76,12 +84,20 @@ class AuthController {
 
         if (!$email || !$password) Response::error('email and password required.');
 
+        $limiter = new RateLimiter($this->db);
+        $lockedForMinutes = $limiter->checkLocked($email);
+        if ($lockedForMinutes !== null) Response::tooManyRequests();
+
         $stmt = $this->db->prepare("SELECT * FROM users WHERE email = ? AND is_active = 1");
         $stmt->execute([$email]);
         $row = $stmt->fetch();
 
-        if (!$row || !password_verify($password, $row['password']))
-            Response::error('Invalid email or password.', 401);
+        if (!$row || !password_verify($password, $row['password'])) {
+            $limiter->recordFailure($email);
+            Response::error(ErrorMessages::get('auth.invalid_credentials'), 401);
+        }
+
+        $limiter->recordSuccess($email);
 
         $user = $this->userFromRow($row);
         Response::ok([
@@ -91,8 +107,13 @@ class AuthController {
     }
 
     // POST /auth/logout
+    // Bumps token_version so the token just used (and any other outstanding
+    // token for this user) is immediately rejected by AuthMiddleware, rather
+    // than remaining valid until natural expiry.
     public function logout(): never {
-        // JWT is stateless — client drops the token
+        $payload = AuthMiddleware::authenticate();
+        $this->db->prepare("UPDATE users SET token_version = token_version + 1 WHERE uid = ?")
+            ->execute([$payload['uid']]);
         Response::ok(['message' => 'Logged out.']);
     }
 
@@ -139,7 +160,9 @@ class AuthController {
         if (!$reset) Response::error('Invalid or expired reset token.', 400);
 
         $hash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
-        $this->db->prepare("UPDATE users SET password = ? WHERE email = ?")
+        // Bump token_version too -- a password reset should invalidate any
+        // tokens issued before it, same as a self-service password change.
+        $this->db->prepare("UPDATE users SET password = ?, token_version = token_version + 1 WHERE email = ?")
             ->execute([$hash, $reset['email']]);
         $this->db->prepare("UPDATE password_resets SET used = 1 WHERE token = ?")
             ->execute([$token]);
@@ -148,9 +171,11 @@ class AuthController {
     }
 
     // GET /auth/me
+    // Uses authenticate() (not require()) so a pending/rejected user can
+    // still see their own account status instead of being locked out
+    // entirely before they even know why.
     public function me(): never {
-        $payload = JWT::fromRequest();
-        if (!$payload) Response::unauthorized();
+        $payload = AuthMiddleware::authenticate();
         $user = $this->buildUser($payload['uid']);
         Response::ok($user);
     }
@@ -177,27 +202,30 @@ class AuthController {
 
     private function userFromRow(array $row): array {
         return [
-            'uid'         => $row['uid'],
-            'email'       => $row['email'],
-            'displayName' => $row['display_name'],
-            'salutation'  => $row['salutation']  ?? null,
-            'firstName'   => $row['first_name']  ?? null,
-            'lastName'    => $row['last_name']   ?? null,
-            'phone'       => $row['phone']       ?? null,
-            'role'        => $row['role'],
-            'isHeadCoach' => (bool)($row['is_head_coach'] ?? false),
-            'dojoId'      => $row['dojo_id'],
-            'avatarUrl'   => $row['avatar_url'] ?? null,
-            'createdAt'   => $row['created_at'],
+            'uid'             => $row['uid'],
+            'email'           => $row['email'],
+            'displayName'     => $row['display_name'],
+            'salutation'      => $row['salutation']  ?? null,
+            'firstName'       => $row['first_name']  ?? null,
+            'lastName'        => $row['last_name']   ?? null,
+            'phone'           => $row['phone']       ?? null,
+            'role'            => $row['role'],
+            'isHeadCoach'     => (bool)($row['is_head_coach'] ?? false),
+            'dojoId'          => $row['dojo_id'],
+            'avatarUrl'       => $row['avatar_url'] ?? null,
+            'createdAt'       => $row['created_at'],
+            'approvalStatus'  => $row['approval_status'] ?? 'approved',
+            'tokenVersion'    => (int)($row['token_version'] ?? 1),
         ];
     }
 
     private function issueToken(array $user): string {
         return JWT::encode([
-            'uid'         => $user['uid'],
-            'role'        => $user['role'],
-            'isHeadCoach' => $user['isHeadCoach'],
-            'dojoId'      => $user['dojoId'],
+            'uid'            => $user['uid'],
+            'role'           => $user['role'],
+            'isHeadCoach'    => $user['isHeadCoach'],
+            'dojoId'         => $user['dojoId'],
+            'tokenVersion'   => $user['tokenVersion'],
         ], $this->cfg['jwt_secret'], $this->cfg['jwt_expiry']);
     }
 }

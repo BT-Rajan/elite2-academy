@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../core/Database.php';
 require_once __DIR__ . '/../core/Response.php';
+require_once __DIR__ . '/../core/Tenant.php';
 require_once __DIR__ . '/../middleware/Auth.php';
 
 class AttendanceController {
@@ -11,11 +12,10 @@ class AttendanceController {
 
     // GET /sessions
     public function listSessions(): never {
-        $auth = AuthMiddleware::require();
-        $dojoId   = $_GET['dojoId']   ?? $auth['dojoId'];
+        $auth     = AuthMiddleware::require();
         $coachUid = $_GET['coachUid'] ?? null;
         $sql = "SELECT * FROM sessions WHERE dojo_id = ?";
-        $p   = [$dojoId];
+        $p   = [Tenant::dojoId($auth)];
         if ($coachUid) { $sql .= " AND coach_uid = ?"; $p[] = $coachUid; }
         $sql .= " ORDER BY date DESC, created_at DESC LIMIT 30";
         $stmt = $this->db->prepare($sql); $stmt->execute($p);
@@ -24,12 +24,8 @@ class AttendanceController {
 
     // GET /sessions/:id
     public function getSession(int $id): never {
-        AuthMiddleware::require();
-        $stmt = $this->db->prepare("SELECT * FROM sessions WHERE id = ?");
-        $stmt->execute([$id]);
-        $row = $stmt->fetch();
-        if (!$row) Response::notFound('Session not found.');
-        Response::ok($row);
+        $auth = AuthMiddleware::require();
+        Response::ok(Tenant::session($this->db, $auth, $id));
     }
 
     // POST /sessions
@@ -47,23 +43,25 @@ class AttendanceController {
                 $b['location'] ?? null,
             ]);
         $id = (int)$this->db->lastInsertId();
-        $this->getSession($id);
+        Response::ok(Tenant::session($this->db, $auth, $id));
     }
 
     // PATCH /sessions/:id
     public function updateSession(int $id): never {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireRole($auth, 'admin', 'coach');
+        Tenant::session($this->db, $auth, $id);
         $b = $this->body();
         if (isset($b['isClosed']))
             $this->db->prepare("UPDATE sessions SET is_closed = ? WHERE id = ?")
                 ->execute([(int)$b['isClosed'], $id]);
-        $this->getSession($id);
+        Response::ok(Tenant::session($this->db, $auth, $id));
     }
 
     // GET /sessions/:id/comments
     public function listComments(int $sessionId): never {
-        AuthMiddleware::require();
+        $auth = AuthMiddleware::require();
+        Tenant::session($this->db, $auth, $sessionId);
         $stmt = $this->db->prepare("SELECT * FROM session_comments WHERE session_id = ? ORDER BY created_at ASC");
         $stmt->execute([$sessionId]);
         Response::ok($stmt->fetchAll());
@@ -73,40 +71,39 @@ class AttendanceController {
     public function addComment(int $sessionId): never {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireRole($auth, 'admin', 'coach');
+        Tenant::session($this->db, $auth, $sessionId);
         $b = $this->body();
+        $student = Tenant::student($this->db, $auth, (int)($b['studentId'] ?? 0));
         $skills = !empty($b['skills']) ? json_encode($b['skills']) : null;
         $this->db->prepare("
             INSERT INTO session_comments (session_id, student_id, coach_uid, coach_name, comment, skills)
             VALUES (?, ?, ?, ?, ?, ?)")
             ->execute([
-                $sessionId, $b['studentId'] ?? 0,
+                $sessionId, $student['id'],
                 $auth['uid'], $b['coachName'] ?? '',
                 $b['comment'] ?? '', $skills,
             ]);
-        // Notify parent
-        $student = $this->db->prepare("SELECT parent_uid, first_name FROM students WHERE id = ?");
-        $student->execute([$b['studentId'] ?? 0]);
-        $s = $student->fetch();
-        if ($s) {
-            $this->db->prepare("INSERT INTO notifications (uid, type, title, body) VALUES (?,?,?,?)")
-                ->execute([
-                    $s['parent_uid'], 'message',
-                    "New note from {$b['coachName']}",
-                    substr($b['comment'] ?? '', 0, 100),
-                ]);
-        }
+        $this->db->prepare("INSERT INTO notifications (uid, type, title, body) VALUES (?,?,?,?)")
+            ->execute([
+                $student['parent_uid'], 'message',
+                "New note from {$b['coachName']}",
+                substr($b['comment'] ?? '', 0, 100),
+            ]);
         Response::created(['id' => $this->db->lastInsertId()]);
     }
 
     // GET /attendance
     public function listAttendance(): never {
-        AuthMiddleware::require();
+        $auth      = AuthMiddleware::require();
         $sessionId = $_GET['sessionId'] ?? null;
         $studentId = $_GET['studentId'] ?? null;
         $limit     = min((int)($_GET['limit'] ?? 50), 200);
+        if ($sessionId) Tenant::session($this->db, $auth, (int)$sessionId);
+        if ($studentId) Tenant::student($this->db, $auth, (int)$studentId);
+
         $sql = "SELECT a.*, s.class_name, s.date FROM attendance a
-                JOIN sessions s ON s.id = a.session_id WHERE 1=1";
-        $p = [];
+                JOIN sessions s ON s.id = a.session_id WHERE s.dojo_id = ?";
+        $p = [Tenant::dojoId($auth)];
         if ($sessionId) { $sql .= " AND a.session_id = ?"; $p[] = $sessionId; }
         if ($studentId) { $sql .= " AND a.student_id = ?"; $p[] = $studentId; }
         $sql .= " ORDER BY a.marked_at DESC LIMIT $limit";
@@ -119,6 +116,9 @@ class AttendanceController {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireRole($auth, 'admin', 'coach');
         $b = $this->body();
+        Tenant::session($this->db, $auth, (int)($b['sessionId'] ?? 0));
+        $student = Tenant::student($this->db, $auth, (int)($b['studentId'] ?? 0));
+
         $this->db->prepare("
             INSERT INTO attendance (session_id, student_id, status, marked_by)
             VALUES (?, ?, ?, ?)
@@ -127,18 +127,12 @@ class AttendanceController {
                 $b['sessionId'] ?? 0, $b['studentId'] ?? 0,
                 $b['status']    ?? 'present', $auth['uid'],
             ]);
-        // Award loyalty points
         $status = $b['status'] ?? 'present';
         if ($status === 'present' || $status === 'late') {
             $pts = $status === 'present' ? 10 : 5;
-            $student = $this->db->prepare("SELECT parent_uid, dojo_id, first_name FROM students WHERE id = ?");
-            $student->execute([$b['studentId']]);
-            $s = $student->fetch();
-            if ($s) {
-                $this->awardLoyalty($s['parent_uid'], $s['dojo_id'], $pts,
-                    $status === 'present' ? 'attendance' : 'attendance_late',
-                    "{$s['first_name']} attended class");
-            }
+            $this->awardLoyalty($student['parent_uid'], $student['dojo_id'], $pts,
+                $status === 'present' ? 'attendance' : 'attendance_late',
+                "{$student['first_name']} attended class");
         }
         Response::ok(['marked' => true]);
     }
@@ -150,18 +144,22 @@ class AttendanceController {
         $b       = $this->body();
         $records = $b['records'] ?? [];
         foreach ($records as $rec) {
+            $sessionId = (int)($rec['sessionId'] ?? 0);
+            $studentId = (int)($rec['studentId'] ?? 0);
+            Tenant::session($this->db, $auth, $sessionId);
+            Tenant::student($this->db, $auth, $studentId);
             $this->db->prepare("
                 INSERT INTO attendance (session_id, student_id, status, marked_by)
                 VALUES (?, ?, ?, ?)
                 ON DUPLICATE KEY UPDATE status = VALUES(status), marked_at = NOW()")
-                ->execute([$rec['sessionId'], $rec['studentId'], $rec['status'], $auth['uid']]);
+                ->execute([$sessionId, $studentId, $rec['status'], $auth['uid']]);
         }
         Response::ok(['count' => count($records)]);
     }
 
     private function awardLoyalty(string $parentUid, string $dojoId, int $pts, string $reason, string $note): void {
-        $acct = $this->db->prepare("SELECT id, points, lifetime_points FROM loyalty_accounts WHERE parent_uid = ?");
-        $acct->execute([$parentUid]);
+        $acct = $this->db->prepare("SELECT id, points, lifetime_points FROM loyalty_accounts WHERE parent_uid = ? AND dojo_id = ?");
+        $acct->execute([$parentUid, $dojoId]);
         $row = $acct->fetch();
         if ($row) {
             $newLifetime = $row['lifetime_points'] + $pts;

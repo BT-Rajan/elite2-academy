@@ -55,8 +55,8 @@ function createUser(PDO $db, string $dojoId, string $email, string $pw, string $
                      string $firstName, string $lastName, string $role, bool $isHeadCoach = false): string {
     $u = uid();
     $db->prepare("
-        INSERT INTO users (uid, email, password, display_name, first_name, last_name, role, is_head_coach, dojo_id)
-        VALUES (?,?,?,?,?,?,?,?,?)")
+        INSERT INTO users (uid, email, password, display_name, first_name, last_name, role, is_head_coach, dojo_id, approval_status, approved_at)
+        VALUES (?,?,?,?,?,?,?,?,?,'approved',NOW())")
         ->execute([$u, $email, hash_pw($pw), $displayName, $firstName, $lastName, $role, (int)$isHeadCoach, $dojoId]);
     return $u;
 }
