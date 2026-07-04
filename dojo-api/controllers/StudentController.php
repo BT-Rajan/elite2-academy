@@ -18,10 +18,21 @@ class StudentController {
     // children -- a parentUid query param from any other role is honored
     // (staff/coach/admin filtering their own dojo's list by parent), but a
     // parent role can never widen scope past themselves.
+    //
+    // branchId filter: admin/head coach/staff may pass any branchId in the
+    // dojo. A plain coach may also pass another branch's id -- this is a
+    // read-only list endpoint, so that's exactly the "coach can view
+    // students in other branches" allowance; omitting branchId defaults a
+    // plain coach to their own branch rather than the whole dojo.
     public function list(): never {
         $auth      = AuthMiddleware::require();
         $parentUid = $_GET['parentUid'] ?? null;
         if ($auth['role'] === 'parent') $parentUid = $auth['uid'];
+
+        $branchId = isset($_GET['branchId']) ? (int)$_GET['branchId'] : null;
+        if ($auth['role'] === 'coach' && !Tenant::isBranchUnrestricted($auth) && $branchId === null) {
+            $branchId = Tenant::branchId($auth);
+        }
 
         $sql    = "SELECT s.*, b.name AS belt_name, b.color_hex, d.name AS discipline_name
                    FROM students s
@@ -31,6 +42,7 @@ class StudentController {
         $params = [Tenant::dojoId($auth)];
 
         if ($parentUid) { $sql .= " AND s.parent_uid = ?"; $params[] = $parentUid; }
+        if ($branchId)  { $sql .= " AND s.branch_id = ?";  $params[] = $branchId; }
         $sql .= " ORDER BY s.first_name";
 
         $stmt = $this->db->prepare($sql);
@@ -45,9 +57,12 @@ class StudentController {
     }
 
     // POST /students
+    // Admin or Staff may add a student (per spec: "admin and staff can
+    // add/modify... students"). Staff must add within their own branch;
+    // Admin may specify any branchId in the dojo.
     public function create(): never {
         $auth = AuthMiddleware::require();
-        AuthMiddleware::requireRole($auth, 'admin');
+        AuthMiddleware::requireRole($auth, 'admin', 'staff');
         $b = $this->body();
         Validator::make($b)
             ->required('parentUid')
@@ -56,12 +71,21 @@ class StudentController {
             ->date('dob')
             ->in('gender', ['M', 'F', 'Other'])
             ->int('disciplineId')
+            ->int('branchId', 1)
             ->check();
+
+        $branchId = !empty($b['branchId']) ? (int)$b['branchId'] : Tenant::branchId($auth);
+        if (!$branchId) Response::error('branchId is required.', 422);
+        if ($auth['role'] === 'staff' && $branchId !== Tenant::branchId($auth)) {
+            Response::forbidden('Staff can only add students to their own branch.');
+        }
+        Tenant::branch($this->db, $auth, $branchId); // validates it belongs to this dojo
+
         $stmt = $this->db->prepare("
-            INSERT INTO students (dojo_id, parent_uid, first_name, last_name, dob, gender, discipline_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?)");
+            INSERT INTO students (dojo_id, branch_id, parent_uid, first_name, last_name, dob, gender, discipline_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
-            $auth['dojoId'], $b['parentUid'] ?? '', $b['firstName'] ?? '',
+            $auth['dojoId'], $branchId, $b['parentUid'] ?? '', $b['firstName'] ?? '',
             $b['lastName'] ?? '', $b['dob'] ?? null, $b['gender'] ?? null,
             $b['disciplineId'] ?? null,
         ]);
@@ -72,8 +96,9 @@ class StudentController {
     // PATCH /students/:id
     public function update(int $id): never {
         $auth = AuthMiddleware::require();
-        AuthMiddleware::requireRole($auth, 'admin', 'coach');
-        Tenant::student($this->db, $auth, $id);
+        AuthMiddleware::requireRole($auth, 'admin', 'coach', 'staff');
+        $student = Tenant::student($this->db, $auth, $id);
+        Tenant::assertStudentBranchAccess($auth, $student, write: true);
         $b = $this->body();
         Validator::make($b)
             ->required('firstName')->string('firstName', 1, 60)
@@ -108,6 +133,7 @@ class StudentController {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireRole($auth, 'admin', 'coach');
         $student = Tenant::student($this->db, $auth, $id);
+        Tenant::assertStudentBranchAccess($auth, $student, write: true);
         $b = $this->body();
         $this->db->prepare("INSERT INTO belt_history (student_id, belt_name, awarded_by, notes) VALUES (?,?,?,?)")
             ->execute([$id, $b['beltName'] ?? '', $b['awardedBy'] ?? '', $b['notes'] ?? null]);
@@ -144,6 +170,7 @@ class StudentController {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireRole($auth, 'admin', 'coach');
         $student = Tenant::student($this->db, $auth, $id);
+        Tenant::assertStudentBranchAccess($auth, $student, write: true);
         $b      = $this->body();
         $skills = !empty($b['skills']) ? json_encode($b['skills']) : null;
         $this->db->prepare("
@@ -162,7 +189,8 @@ class StudentController {
     public function addObjective(int $id): never {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireRole($auth, 'admin', 'coach');
-        Tenant::student($this->db, $auth, $id);
+        $student = Tenant::student($this->db, $auth, $id);
+        Tenant::assertStudentBranchAccess($auth, $student, write: true);
         $b = $this->body();
         $this->db->prepare("INSERT INTO student_objectives (student_id, description, set_by) VALUES (?,?,?)")
             ->execute([$id, $b['description'] ?? '', $auth['uid']]);
@@ -174,6 +202,7 @@ class StudentController {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireRole($auth, 'admin', 'coach');
         $student = Tenant::student($this->db, $auth, $id);
+        Tenant::assertStudentBranchAccess($auth, $student, write: true);
         $b = $this->body();
         $completedAt = !empty($b['isComplete']) ? date('Y-m-d H:i:s') : null;
         $this->db->prepare("UPDATE student_objectives SET is_complete=?, completed_at=? WHERE id=? AND student_id=?")

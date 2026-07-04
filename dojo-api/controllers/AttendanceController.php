@@ -12,12 +12,20 @@ class AttendanceController {
     public function __construct() { $this->db = Database::get(); }
 
     // GET /sessions
+    // A plain coach defaults to their own branch's sessions unless they
+    // pass a branchId explicitly (still their own -- write endpoints below
+    // enforce that; this list is harmless either way since it's read-only).
     public function listSessions(): never {
         $auth     = AuthMiddleware::require();
         $coachUid = $_GET['coachUid'] ?? null;
+        $branchId = isset($_GET['branchId']) ? (int)$_GET['branchId'] : null;
+        if ($auth['role'] === 'coach' && !Tenant::isBranchUnrestricted($auth) && $branchId === null) {
+            $branchId = Tenant::branchId($auth);
+        }
         $sql = "SELECT * FROM sessions WHERE dojo_id = ?";
         $p   = [Tenant::dojoId($auth)];
         if ($coachUid) { $sql .= " AND coach_uid = ?"; $p[] = $coachUid; }
+        if ($branchId) { $sql .= " AND branch_id = ?"; $p[] = $branchId; }
         $sql .= " ORDER BY date DESC, created_at DESC LIMIT 30";
         $stmt = $this->db->prepare($sql); $stmt->execute($p);
         Response::ok($stmt->fetchAll());
@@ -30,6 +38,8 @@ class AttendanceController {
     }
 
     // POST /sessions
+    // A plain coach may only create a session in their own branch; Admin
+    // or Head Coach may create one in any branch of the dojo.
     public function createSession(): never {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireRole($auth, 'admin', 'coach');
@@ -39,12 +49,19 @@ class AttendanceController {
             ->date('date')
             ->time('startTime')
             ->time('endTime')
+            ->int('branchId', 1)
             ->check();
+
+        $branchId = !empty($b['branchId']) ? (int)$b['branchId'] : Tenant::branchId($auth);
+        if (!$branchId) Response::error('branchId is required.', 422);
+        Tenant::assertBranchWriteAccess($auth, $branchId);
+        Tenant::branch($this->db, $auth, $branchId); // validates it belongs to this dojo
+
         $this->db->prepare("
-            INSERT INTO sessions (dojo_id, class_name, coach_uid, date, start_time, end_time, location)
-            VALUES (?, ?, ?, ?, ?, ?, ?)")
+            INSERT INTO sessions (dojo_id, branch_id, class_name, coach_uid, date, start_time, end_time, location)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
             ->execute([
-                $auth['dojoId'], $b['className'] ?? 'Class',
+                $auth['dojoId'], $branchId, $b['className'] ?? 'Class',
                 $auth['uid'], $b['date'] ?? date('Y-m-d'),
                 $b['startTime'] ?? '00:00', $b['endTime'] ?? '00:00',
                 $b['location'] ?? null,
@@ -57,7 +74,8 @@ class AttendanceController {
     public function updateSession(int $id): never {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireRole($auth, 'admin', 'coach');
-        Tenant::session($this->db, $auth, $id);
+        $session = Tenant::session($this->db, $auth, $id);
+        Tenant::assertBranchWriteAccess($auth, (int)$session['branch_id']);
         $b = $this->body();
         if (isset($b['isClosed']))
             $this->db->prepare("UPDATE sessions SET is_closed = ? WHERE id = ?")
@@ -78,9 +96,11 @@ class AttendanceController {
     public function addComment(int $sessionId): never {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireRole($auth, 'admin', 'coach');
-        Tenant::session($this->db, $auth, $sessionId);
+        $session = Tenant::session($this->db, $auth, $sessionId);
+        Tenant::assertBranchWriteAccess($auth, (int)$session['branch_id']);
         $b = $this->body();
         $student = Tenant::student($this->db, $auth, (int)($b['studentId'] ?? 0));
+        Tenant::assertStudentBranchAccess($auth, $student, write: true);
         $skills = !empty($b['skills']) ? json_encode($b['skills']) : null;
         $this->db->prepare("
             INSERT INTO session_comments (session_id, student_id, coach_uid, coach_name, comment, skills)
@@ -104,6 +124,7 @@ class AttendanceController {
         $auth      = AuthMiddleware::require();
         $sessionId = $_GET['sessionId'] ?? null;
         $studentId = $_GET['studentId'] ?? null;
+        $branchId  = isset($_GET['branchId']) ? (int)$_GET['branchId'] : null;
         $limit     = min((int)($_GET['limit'] ?? 50), 200);
         if ($sessionId) Tenant::session($this->db, $auth, (int)$sessionId);
         if ($studentId) Tenant::student($this->db, $auth, (int)$studentId);
@@ -113,6 +134,7 @@ class AttendanceController {
         $p = [Tenant::dojoId($auth)];
         if ($sessionId) { $sql .= " AND a.session_id = ?"; $p[] = $sessionId; }
         if ($studentId) { $sql .= " AND a.student_id = ?"; $p[] = $studentId; }
+        if ($branchId)  { $sql .= " AND a.branch_id = ?";  $p[] = $branchId; }
         $sql .= " ORDER BY a.marked_at DESC LIMIT $limit";
         $stmt = $this->db->prepare($sql); $stmt->execute($p);
         Response::ok($stmt->fetchAll());
@@ -128,15 +150,17 @@ class AttendanceController {
             ->required('studentId')->int('studentId', 1)
             ->in('status', ['present', 'late', 'excused', 'absent'])
             ->check();
-        Tenant::session($this->db, $auth, (int)($b['sessionId'] ?? 0));
+        $session = Tenant::session($this->db, $auth, (int)($b['sessionId'] ?? 0));
+        Tenant::assertBranchWriteAccess($auth, (int)$session['branch_id']);
         $student = Tenant::student($this->db, $auth, (int)($b['studentId'] ?? 0));
+        Tenant::assertStudentBranchAccess($auth, $student, write: true);
 
         $this->db->prepare("
-            INSERT INTO attendance (session_id, student_id, status, marked_by)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO attendance (session_id, branch_id, student_id, status, marked_by)
+            VALUES (?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE status = VALUES(status), marked_by = VALUES(marked_by), marked_at = NOW()")
             ->execute([
-                $b['sessionId'] ?? 0, $b['studentId'] ?? 0,
+                $b['sessionId'] ?? 0, $session['branch_id'], $b['studentId'] ?? 0,
                 $b['status']    ?? 'present', $auth['uid'],
             ]);
         $status = $b['status'] ?? 'present';
@@ -158,13 +182,15 @@ class AttendanceController {
         foreach ($records as $rec) {
             $sessionId = (int)($rec['sessionId'] ?? 0);
             $studentId = (int)($rec['studentId'] ?? 0);
-            Tenant::session($this->db, $auth, $sessionId);
-            Tenant::student($this->db, $auth, $studentId);
+            $session = Tenant::session($this->db, $auth, $sessionId);
+            Tenant::assertBranchWriteAccess($auth, (int)$session['branch_id']);
+            $student = Tenant::student($this->db, $auth, $studentId);
+            Tenant::assertStudentBranchAccess($auth, $student, write: true);
             $this->db->prepare("
-                INSERT INTO attendance (session_id, student_id, status, marked_by)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO attendance (session_id, branch_id, student_id, status, marked_by)
+                VALUES (?, ?, ?, ?, ?)
                 ON DUPLICATE KEY UPDATE status = VALUES(status), marked_at = NOW()")
-                ->execute([$sessionId, $studentId, $rec['status'], $auth['uid']]);
+                ->execute([$sessionId, $session['branch_id'], $studentId, $rec['status'], $auth['uid']]);
         }
         Response::ok(['count' => count($records)]);
     }

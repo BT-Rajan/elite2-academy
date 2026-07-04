@@ -65,4 +65,23 @@ class AuthMiddleware {
             Response::forbidden('Only a Head Coach or Admin can do that.');
         }
     }
+
+    // Branch CRUD and staff/coach/student branch-assignment is restricted to
+    // Admin or Head Coach -- same rule as requireHeadCoach, named separately
+    // so branch-management call sites read clearly for what they're gating.
+    public static function requireBranchManager(array $payload): void {
+        $isAdmin     = ($payload['role'] ?? '') === 'admin';
+        $isHeadCoach = ($payload['role'] ?? '') === 'coach' && !empty($payload['isHeadCoach']);
+        if (!$isAdmin && !$isHeadCoach) {
+            Response::forbidden('Only a Head Coach or Admin can manage branches.');
+        }
+    }
+
+    // Student branch transfers (and add/modify tied to a transfer) are
+    // restricted to Admin or Staff.
+    public static function requireTransferPermission(array $payload): void {
+        if (!in_array($payload['role'] ?? '', ['admin', 'staff'], true)) {
+            Response::forbidden('Only Admin or Staff can transfer students between branches.');
+        }
+    }
 }

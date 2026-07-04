@@ -33,6 +33,7 @@ class AuthController {
             ->required('displayName')->string('displayName', 1, 100)
             ->required('dojoId')->string('dojoId', 1, 50)
             ->in('role', ['admin', 'coach', 'parent', 'staff'])
+            ->int('branchId', 1)
             ->check();
 
         $email       = trim($b['email']);
@@ -40,6 +41,10 @@ class AuthController {
         $displayName = trim($b['displayName']);
         $role        = $b['role'] ?? 'parent';
         $dojoId      = trim($b['dojoId']);
+        // Optional at signup -- e.g. a parent/coach picking their home
+        // branch during registration. Left unassigned (NULL) if omitted;
+        // an admin/head coach can assign it later via PATCH /users/:uid/branch.
+        $branchId    = !empty($b['branchId']) ? (int)$b['branchId'] : null;
 
         // Check duplicate
         $exists = $this->db->prepare("SELECT id FROM users WHERE email = ?");
@@ -53,10 +58,10 @@ class AuthController {
         $lastName  = $nameParts[1] ?? '';
 
         $stmt = $this->db->prepare("
-            INSERT INTO users (uid, email, password, display_name, first_name, last_name, role, dojo_id, approval_status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+            INSERT INTO users (uid, email, password, display_name, first_name, last_name, role, dojo_id, branch_id, approval_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
         ");
-        $stmt->execute([$uid, $email, $hash, $displayName, $firstName, $lastName, $role, $dojoId]);
+        $stmt->execute([$uid, $email, $hash, $displayName, $firstName, $lastName, $role, $dojoId, $branchId]);
 
         // Auto-create dojo if it doesn't exist yet
         $this->db->prepare("INSERT IGNORE INTO dojos (id, name) VALUES (?, ?)")
@@ -212,6 +217,7 @@ class AuthController {
             'role'            => $row['role'],
             'isHeadCoach'     => (bool)($row['is_head_coach'] ?? false),
             'dojoId'          => $row['dojo_id'],
+            'branchId'        => isset($row['branch_id']) ? (int)$row['branch_id'] : null,
             'avatarUrl'       => $row['avatar_url'] ?? null,
             'createdAt'       => $row['created_at'],
             'approvalStatus'  => $row['approval_status'] ?? 'approved',
@@ -225,6 +231,7 @@ class AuthController {
             'role'           => $user['role'],
             'isHeadCoach'    => $user['isHeadCoach'],
             'dojoId'         => $user['dojoId'],
+            'branchId'       => $user['branchId'],
             'tokenVersion'   => $user['tokenVersion'],
         ], $this->cfg['jwt_secret'], $this->cfg['jwt_expiry']);
     }

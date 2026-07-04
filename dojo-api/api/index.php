@@ -100,6 +100,7 @@ try {
     require_once __DIR__.'/../controllers/EvaluationController.php';
     require_once __DIR__.'/../controllers/AttendanceController.php';
     require_once __DIR__.'/../controllers/GenericController.php';
+    require_once __DIR__.'/../controllers/BranchController.php';
 
     $router = new Router();
 
@@ -130,6 +131,19 @@ try {
     $router->get('/students/{id}/comments',  fn($id) => (new StudentController)->comments((int)$id));
     $router->post('/students/{id}/comments', fn($id) => (new StudentController)->addComment((int)$id));
     $router->patch('/students/{id}/objectives/{objId}', fn($id, $objId) => (new StudentController)->updateObjective((int)$id, (int)$objId));
+    $router->post('/students/{id}/transfer',  fn($id) => (new BranchController)->transferStudent((int)$id));
+    $router->get('/students/{id}/transfers',  fn($id) => (new BranchController)->transferHistory((int)$id));
+
+    // ── Branches ──────────────────────────────────────────────────────────────
+    $router->get('/branches',             fn() => (new BranchController)->list());
+    $router->post('/branches',            fn() => (new BranchController)->create());
+    $router->get('/branches/{id}',        fn($id) => (new BranchController)->get((int)$id));
+    $router->patch('/branches/{id}',      fn($id) => (new BranchController)->update((int)$id));
+    $router->delete('/branches/{id}',     fn($id) => (new BranchController)->deactivate((int)$id));
+    $router->get('/branches/{id}/students', fn($id) => (new BranchController)->students((int)$id));
+    $router->get('/branches/{id}/coaches',  fn($id) => (new BranchController)->coaches((int)$id));
+    $router->get('/branches/{id}/programs', fn($id) => (new BranchController)->programs((int)$id));
+    $router->patch('/users/{uid}/branch', fn($uid) => (new BranchController)->assignUserBranch($uid));
 
     // Curriculum roadmap
     $router->get('/disciplines/{id}/roadmap', fn($id) => (new CurriculumController)->roadmap((int)$id));

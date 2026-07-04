@@ -16,6 +16,55 @@ class Tenant {
         return $auth['dojoId'];
     }
 
+    public static function branchId(array $auth): ?int {
+        return isset($auth['branchId']) ? (int)$auth['branchId'] : null;
+    }
+
+    public static function branch(PDO $db, array $auth, int $branchId): array {
+        $stmt = $db->prepare("SELECT * FROM branches WHERE id = ? AND dojo_id = ?");
+        $stmt->execute([$branchId, self::dojoId($auth)]);
+        $row = $stmt->fetch();
+        if (!$row) Response::notFound('Branch not found.');
+        return $row;
+    }
+
+    // Admin, Head Coach, and Staff are never restricted to a single branch --
+    // they operate dojo-wide (branch CRUD/assignment is admin/head-coach
+    // only, per AuthMiddleware::requireBranchManager; staff's dojo-wide reach
+    // is specifically for adding/transferring students, per
+    // AuthMiddleware::requireTransferPermission). A plain coach (or parent)
+    // is scoped to their own branch_id.
+    public static function isBranchUnrestricted(array $auth): bool {
+        $role = $auth['role'] ?? '';
+        if ($role === 'admin' || $role === 'staff') return true;
+        if ($role === 'coach' && !empty($auth['isHeadCoach'])) return true;
+        return false;
+    }
+
+    // General-purpose write guard for branch-tagged resources other than
+    // students (sessions, schedules, evaluations): a plain coach may only
+    // write within their own branch; everyone covered by
+    // isBranchUnrestricted() may write to any branch in the dojo.
+    public static function assertBranchWriteAccess(array $auth, int $resourceBranchId): void {
+        if (self::isBranchUnrestricted($auth)) return;
+        if ((int)$resourceBranchId !== self::branchId($auth)) {
+            Response::forbidden('You can only do that within your own branch.');
+        }
+    }
+
+    // A plain coach may always *view* a student regardless of branch (per
+    // spec: "coach can view students in other branches"), but may only
+    // *write* (evaluate, comment, mark attendance, edit) students in their
+    // own branch. Admin/Staff/Head Coach can write across any branch.
+    public static function assertStudentBranchAccess(array $auth, array $student, bool $write = false): void {
+        if (self::isBranchUnrestricted($auth)) return;
+        if (($auth['role'] ?? '') !== 'coach') return; // parent ownership already checked elsewhere
+        if (!$write) return; // coaches can always view
+        if ((int)$student['branch_id'] !== self::branchId($auth)) {
+            Response::forbidden('You can only modify students in your own branch.');
+        }
+    }
+
     public static function student(PDO $db, array $auth, int $studentId): array {
         $stmt = $db->prepare("
             SELECT s.*, b.name AS belt_name, b.color_hex, d.name AS discipline_name

@@ -25,13 +25,18 @@ function dateAgo(int $n): string { return date('Y-m-d', strtotime("-$n days")); 
 function printLogins(): void {
     echo "Logins (all passwords shown):\n";
     echo "  Admin        admin@yourdojo.com     / admin123\n";
-    echo "  Head Coach   headcoach@elita.test   / coach123   (Master Rina Chen — can overrule evaluations & promotions)\n";
-    echo "  Coach        coach@elita.test       / coach123   (Coach Diego Alvarez)\n";
-    echo "  Staff        staff@elita.test       / staff123   (Dana Reyes)\n";
-    echo "  Parent       parent1@elita.test     / parent123  (Maria Lopez — Liam & Sofia Lopez)\n";
-    echo "  Parent       parent2@elita.test     / parent123  (James Carter — Ethan & Grace Carter)\n";
-    echo "  Parent       parent3@elita.test     / parent123  (Aisha Khan — Noah Khan)\n\n";
-    echo "Try:\n";
+    echo "  Head Coach   headcoach@elita.test   / coach123   (Master Rina Chen — Downtown, can overrule evaluations & promotions, CRUD branches)\n";
+    echo "  Coach        coach@elita.test       / coach123   (Coach Diego Alvarez — Downtown branch)\n";
+    echo "  Coach        coach2@elita.test      / coach123   (Coach Priya Nair — Riverside branch)\n";
+    echo "  Staff        staff@elita.test       / staff123   (Dana Reyes — Downtown, can transfer students between branches)\n";
+    echo "  Parent       parent1@elita.test     / parent123  (Maria Lopez — Liam & Sofia Lopez, Downtown)\n";
+    echo "  Parent       parent2@elita.test     / parent123  (James Carter — Ethan & Grace Carter, Downtown)\n";
+    echo "  Parent       parent3@elita.test     / parent123  (Aisha Khan — Noah Khan, Riverside)\n\n";
+    echo "Two branches seeded: Downtown (most of the roster) and Riverside (Coach\n";
+    echo "Priya Nair, Noah Khan). Try:\n";
+    echo "  - Log in as coach@elita.test and GET /branches/{riverside}/students — coach can view another branch's\n";
+    echo "    students read-only but can't mark attendance/evaluate them there.\n";
+    echo "  - Log in as staff@elita.test and POST /students/{id}/transfer to move a student between branches.\n";
     echo "  - Ethan Carter (Blue belt): all promotion requirements met — log in as either coach and Promote him.\n";
     echo "  - Liam Lopez (Yellow belt): Self-Defense evaluation failed — not ready yet, good 'in progress' case.\n";
     echo "  - Noah Khan (Purple belt): a failed Grappling evaluation was overruled by the Head Coach — check his\n";
@@ -50,29 +55,45 @@ if ($existing->fetch()) {
 $db->prepare("INSERT IGNORE INTO dojos (id, name, email, phone, timezone) VALUES (?,?,?,?,?)")
    ->execute([$dojoId, 'Elita Academy', 'info@elita.test', '+1 555-0100', 'America/New_York']);
 
+// ── Branches ─────────────────────────────────────────────────────────────────
+// Two branches so branch-scoping is actually exercisable: most of the
+// existing dataset lives on the Downtown main branch, plus a second
+// Riverside branch with its own coach and a couple of students, to test
+// cross-branch visibility (coach viewing students elsewhere, parents seeing
+// other branches' coaches/programs, admin/staff transferring a student).
+function createBranch(PDO $db, string $dojoId, string $name, string $code, string $address, string $phone): int {
+    $db->prepare("INSERT INTO branches (dojo_id, name, code, address, phone) VALUES (?,?,?,?,?)")
+        ->execute([$dojoId, $name, $code, $address, $phone]);
+    return (int)$db->lastInsertId();
+}
+$downtownBranchId = createBranch($db, $dojoId, 'Downtown Branch', 'DT', '100 Main St, Springfield', '+1 555-0101');
+$riverBranchId     = createBranch($db, $dojoId, 'Riverside Branch', 'RIV', '55 River Rd, Springfield', '+1 555-0102');
+
 // ── Users ────────────────────────────────────────────────────────────────────
 function createUser(PDO $db, string $dojoId, string $email, string $pw, string $displayName,
-                     string $firstName, string $lastName, string $role, bool $isHeadCoach = false): string {
+                     string $firstName, string $lastName, string $role, bool $isHeadCoach = false, ?int $branchId = null): string {
     $u = uid();
     $db->prepare("
-        INSERT INTO users (uid, email, password, display_name, first_name, last_name, role, is_head_coach, dojo_id, approval_status, approved_at)
-        VALUES (?,?,?,?,?,?,?,?,?,'approved',NOW())")
-        ->execute([$u, $email, hash_pw($pw), $displayName, $firstName, $lastName, $role, (int)$isHeadCoach, $dojoId]);
+        INSERT INTO users (uid, email, password, display_name, first_name, last_name, role, is_head_coach, dojo_id, branch_id, approval_status, approved_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,'approved',NOW())")
+        ->execute([$u, $email, hash_pw($pw), $displayName, $firstName, $lastName, $role, (int)$isHeadCoach, $dojoId, $branchId]);
     return $u;
 }
 
 $adminExists = $db->prepare("SELECT uid FROM users WHERE email = ?");
 $adminExists->execute(['admin@yourdojo.com']);
 $adminRow = $adminExists->fetch();
+// Admin isn't tied to a single branch -- has dojo-wide access regardless of branch_id.
 $adminUid = $adminRow ? $adminRow['uid'] : createUser($db, $dojoId, 'admin@yourdojo.com', 'admin123', 'Admin User', 'Admin', 'User', 'admin');
 
-$headCoachUid = createUser($db, $dojoId, 'headcoach@elita.test', 'coach123', 'Master Rina Chen', 'Rina', 'Chen', 'coach', true);
-$coachUid     = createUser($db, $dojoId, 'coach@elita.test',     'coach123', 'Coach Diego Alvarez', 'Diego', 'Alvarez', 'coach');
-$staffUid     = createUser($db, $dojoId, 'staff@elita.test',     'staff123', 'Dana Reyes', 'Dana', 'Reyes', 'staff');
+$headCoachUid = createUser($db, $dojoId, 'headcoach@elita.test', 'coach123', 'Master Rina Chen', 'Rina', 'Chen', 'coach', true, $downtownBranchId);
+$coachUid     = createUser($db, $dojoId, 'coach@elita.test',     'coach123', 'Coach Diego Alvarez', 'Diego', 'Alvarez', 'coach', false, $downtownBranchId);
+$staffUid     = createUser($db, $dojoId, 'staff@elita.test',     'staff123', 'Dana Reyes', 'Dana', 'Reyes', 'staff', false, $downtownBranchId);
+$riverCoachUid = createUser($db, $dojoId, 'coach2@elita.test',   'coach123', 'Coach Priya Nair', 'Priya', 'Nair', 'coach', false, $riverBranchId);
 
-$parent1Uid = createUser($db, $dojoId, 'parent1@elita.test', 'parent123', 'Maria Lopez',  'Maria', 'Lopez',  'parent');
-$parent2Uid = createUser($db, $dojoId, 'parent2@elita.test', 'parent123', 'James Carter', 'James', 'Carter', 'parent');
-$parent3Uid = createUser($db, $dojoId, 'parent3@elita.test', 'parent123', 'Aisha Khan',   'Aisha', 'Khan',   'parent');
+$parent1Uid = createUser($db, $dojoId, 'parent1@elita.test', 'parent123', 'Maria Lopez',  'Maria', 'Lopez',  'parent', false, $downtownBranchId);
+$parent2Uid = createUser($db, $dojoId, 'parent2@elita.test', 'parent123', 'James Carter', 'James', 'Carter', 'parent', false, $downtownBranchId);
+$parent3Uid = createUser($db, $dojoId, 'parent3@elita.test', 'parent123', 'Aisha Khan',   'Aisha', 'Khan',   'parent', false, $riverBranchId);
 
 // ── Curriculum: multi-track Elita program + a plain single-track discipline ──
 $elita   = seedElitaCurriculum($db, $dojoId);
@@ -91,38 +112,39 @@ foreach ($karateBelts as $i => [$name, $color, $order]) {
 }
 
 // ── Students ─────────────────────────────────────────────────────────────────
-function createStudent(PDO $db, string $dojoId, string $parentUid, string $first, string $last,
+function createStudent(PDO $db, string $dojoId, int $branchId, string $parentUid, string $first, string $last,
                         string $dob, string $gender, int $disciplineId, int $beltId,
                         int $bjjStripes, int $seminarPoints, int $enrolledDaysAgo): int {
     $db->prepare("
-        INSERT INTO students (dojo_id, parent_uid, first_name, last_name, dob, gender,
+        INSERT INTO students (dojo_id, branch_id, parent_uid, first_name, last_name, dob, gender,
                                discipline_id, current_belt_id, bjj_stripes, seminar_points, enrolled_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?)")
-        ->execute([$dojoId, $parentUid, $first, $last, $dob, $gender,
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)")
+        ->execute([$dojoId, $branchId, $parentUid, $first, $last, $dob, $gender,
                    $disciplineId, $beltId, $bjjStripes, $seminarPoints, daysAgo($enrolledDaysAgo)]);
     return (int)$db->lastInsertId();
 }
 
 // Liam — mid-progress: has stripes but hasn't hit seminar points or passed
 // every track yet. Good case for "not ready, keep working."
-$liamId = createStudent($db, $dojoId, $parent1Uid, 'Liam', 'Lopez', '2015-03-14', 'M',
+$liamId = createStudent($db, $dojoId, $downtownBranchId, $parent1Uid, 'Liam', 'Lopez', '2015-03-14', 'M',
     $elita['disciplineId'], $beltIds['Yellow'], 1, 2, 240);
 
 // Sofia — brand new white belt, nothing recorded yet. Empty-state case.
-$sofiaId = createStudent($db, $dojoId, $parent1Uid, 'Sofia', 'Lopez', '2017-08-02', 'F',
+$sofiaId = createStudent($db, $dojoId, $downtownBranchId, $parent1Uid, 'Sofia', 'Lopez', '2017-08-02', 'F',
     $elita['disciplineId'], $beltIds['White'], 0, 0, 20);
 
 // Ethan — fully meets every requirement for his belt. "Ready to promote" case.
-$ethanId = createStudent($db, $dojoId, $parent2Uid, 'Ethan', 'Carter', '2013-11-09', 'M',
+$ethanId = createStudent($db, $dojoId, $downtownBranchId, $parent2Uid, 'Ethan', 'Carter', '2013-11-09', 'M',
     $elita['disciplineId'], $beltIds['Blue'], 0, 4, 420);
 
 // Grace — plain single-track Karate discipline, no curriculum tracks.
-$graceId = createStudent($db, $dojoId, $parent2Uid, 'Grace', 'Carter', '2016-01-22', 'F',
+$graceId = createStudent($db, $dojoId, $downtownBranchId, $parent2Uid, 'Grace', 'Carter', '2016-01-22', 'F',
     $karateDiscId, $karateBeltIds['Green'], 0, 0, 300);
 
-// Noah — meets requirements only because a Head Coach overrule flipped a
-// failed Grappling evaluation to a pass. Overrule-audit-trail case.
-$noahId = createStudent($db, $dojoId, $parent3Uid, 'Noah', 'Khan', '2014-06-30', 'M',
+// Noah — on the Riverside branch (parent Aisha Khan is Riverside too), and
+// meets requirements only because a Head Coach overrule flipped a failed
+// Grappling evaluation to a pass. Cross-branch-view + overrule-audit-trail case.
+$noahId = createStudent($db, $dojoId, $riverBranchId, $parent3Uid, 'Noah', 'Khan', '2014-06-30', 'M',
     $elita['disciplineId'], $beltIds['Purple'], 2, 4, 360);
 
 // ── Belt history (progression up to each student's current belt) ────────────
@@ -149,12 +171,12 @@ addBeltHistory($db, $noahId,  $beltIds['Yellow'], 'Yellow', 'Master Rina Chen', 
 addBeltHistory($db, $noahId,  $beltIds['Purple'], 'Purple', 'Master Rina Chen', 150, 'Two stripes earned on White BJJ — promoted.');
 
 // ── Curriculum evaluations (incl. one Head Coach overrule) ──────────────────
-function addEvaluation(PDO $db, int $studentId, int $beltId, string $track, string $result,
+function addEvaluation(PDO $db, int $studentId, int $branchId, int $beltId, string $track, string $result,
                         string $notes, string $coachUid, string $coachName, int $daysAgo): int {
     $db->prepare("
-        INSERT INTO student_evaluations (student_id, belt_id, track, result, notes, coach_uid, coach_name, evaluated_at)
-        VALUES (?,?,?,?,?,?,?,?)")
-        ->execute([$studentId, $beltId, $track, $result, $notes, $coachUid, $coachName, daysAgo($daysAgo)]);
+        INSERT INTO student_evaluations (student_id, branch_id, belt_id, track, result, notes, coach_uid, coach_name, evaluated_at)
+        VALUES (?,?,?,?,?,?,?,?,?)")
+        ->execute([$studentId, $branchId, $beltId, $track, $result, $notes, $coachUid, $coachName, daysAgo($daysAgo)]);
     return (int)$db->lastInsertId();
 }
 function overruleEvaluation(PDO $db, int $evalId, string $result, string $notes, string $headCoachUid, string $headCoachName, int $daysAgo): void {
@@ -166,24 +188,25 @@ function overruleEvaluation(PDO $db, int $evalId, string $result, string $notes,
 }
 
 // Liam (Yellow): passes Striking + Grappling, fails Self-Defense — not ready.
-addEvaluation($db, $liamId, $beltIds['Yellow'], 'striking',    'pass', 'Combos are crisp, good footwork.',            $coachUid, 'Coach Diego Alvarez', 14);
-addEvaluation($db, $liamId, $beltIds['Yellow'], 'grappling',   'pass', 'Solid shrimping and bridge escapes.',         $coachUid, 'Coach Diego Alvarez', 12);
-addEvaluation($db, $liamId, $beltIds['Yellow'], 'selfdefense', 'fail', 'Needs more reps on rear-grab escapes.',       $headCoachUid, 'Master Rina Chen', 10);
+addEvaluation($db, $liamId, $downtownBranchId, $beltIds['Yellow'], 'striking',    'pass', 'Combos are crisp, good footwork.',            $coachUid, 'Coach Diego Alvarez', 14);
+addEvaluation($db, $liamId, $downtownBranchId, $beltIds['Yellow'], 'grappling',   'pass', 'Solid shrimping and bridge escapes.',         $coachUid, 'Coach Diego Alvarez', 12);
+addEvaluation($db, $liamId, $downtownBranchId, $beltIds['Yellow'], 'selfdefense', 'fail', 'Needs more reps on rear-grab escapes.',       $headCoachUid, 'Master Rina Chen', 10);
 
 // Ethan (Blue): passes everything — the "ready to promote" demo case.
-addEvaluation($db, $ethanId, $beltIds['Blue'], 'striking',    'pass', 'Fight IQ is excellent under pressure.',        $headCoachUid, 'Master Rina Chen', 20);
-addEvaluation($db, $ethanId, $beltIds['Blue'], 'grappling',   'pass', 'Triangle setups are very clean now.',          $headCoachUid, 'Master Rina Chen', 18);
-addEvaluation($db, $ethanId, $beltIds['Blue'], 'selfdefense', 'pass', 'Handled multi-attacker drill confidently.',    $coachUid, 'Coach Diego Alvarez', 15);
+addEvaluation($db, $ethanId, $downtownBranchId, $beltIds['Blue'], 'striking',    'pass', 'Fight IQ is excellent under pressure.',        $headCoachUid, 'Master Rina Chen', 20);
+addEvaluation($db, $ethanId, $downtownBranchId, $beltIds['Blue'], 'grappling',   'pass', 'Triangle setups are very clean now.',          $headCoachUid, 'Master Rina Chen', 18);
+addEvaluation($db, $ethanId, $downtownBranchId, $beltIds['Blue'], 'selfdefense', 'pass', 'Handled multi-attacker drill confidently.',    $coachUid, 'Coach Diego Alvarez', 15);
 
-// Noah (Purple): Grappling initially failed by Coach Alvarez, then overruled
-// to a pass by the Head Coach after a re-test — full audit trail preserved.
-addEvaluation($db, $noahId, $beltIds['Purple'], 'striking',    'pass', 'Pressure fighting has really matured.',       $headCoachUid, 'Master Rina Chen', 25);
-$noahGrapplingEvalId = addEvaluation($db, $noahId, $beltIds['Purple'], 'grappling', 'fail',
+// Noah (Purple, Riverside branch): Grappling initially failed by Coach
+// Alvarez (visiting/overseeing as a cross-branch head-coach action), then
+// overruled to a pass by the Head Coach after a re-test — full audit trail preserved.
+addEvaluation($db, $noahId, $riverBranchId, $beltIds['Purple'], 'striking',    'pass', 'Pressure fighting has really matured.',       $headCoachUid, 'Master Rina Chen', 25);
+$noahGrapplingEvalId = addEvaluation($db, $noahId, $riverBranchId, $beltIds['Purple'], 'grappling', 'fail',
     'Leg lock defense needs work — recommend re-test.', $coachUid, 'Coach Diego Alvarez', 22);
 overruleEvaluation($db, $noahGrapplingEvalId, 'pass',
     'Re-tested personally after extra 1:1 sessions — defense is solid now. Clearing for promotion.',
     $headCoachUid, 'Master Rina Chen', 5);
-addEvaluation($db, $noahId, $beltIds['Purple'], 'selfdefense', 'pass', 'Weapons defense drills were excellent.',      $headCoachUid, 'Master Rina Chen', 8);
+addEvaluation($db, $noahId, $riverBranchId, $beltIds['Purple'], 'selfdefense', 'pass', 'Weapons defense drills were excellent.',      $headCoachUid, 'Master Rina Chen', 8);
 
 // ── Seminar points log (drives students.seminar_points shown above) ─────────
 function addSeminarPoints(PDO $db, int $studentId, int $points, string $reason, string $coachUid, string $coachName, int $daysAgo): void {
@@ -209,12 +232,14 @@ addObjective($db, $noahId,  'Keep drilling leg lock defense weekly', $headCoachU
 addObjective($db, $graceId, 'Prepare Green belt kata for testing', $coachUid, false);
 
 // ── Schedules ─────────────────────────────────────────────────────────────────
-$db->prepare("INSERT INTO schedules (dojo_id, discipline_id, coach_uid, name, day_of_week, start_time, end_time, location) VALUES (?,?,?,?,?,?,?,?)")
-   ->execute([$dojoId, $elita['disciplineId'], $headCoachUid, 'Elita Fundamentals', 1, '17:00', '18:00', 'Main Mat']);
-$db->prepare("INSERT INTO schedules (dojo_id, discipline_id, coach_uid, name, day_of_week, start_time, end_time, location) VALUES (?,?,?,?,?,?,?,?)")
-   ->execute([$dojoId, $elita['disciplineId'], $coachUid, 'Elita Sparring & Grappling', 3, '18:00', '19:15', 'Main Mat']);
-$db->prepare("INSERT INTO schedules (dojo_id, discipline_id, coach_uid, name, day_of_week, start_time, end_time, location) VALUES (?,?,?,?,?,?,?,?)")
-   ->execute([$dojoId, $karateDiscId, $coachUid, 'Traditional Karate', 5, '16:00', '17:00', 'Dojo B']);
+$db->prepare("INSERT INTO schedules (dojo_id, branch_id, discipline_id, coach_uid, name, day_of_week, start_time, end_time, location) VALUES (?,?,?,?,?,?,?,?,?)")
+   ->execute([$dojoId, $downtownBranchId, $elita['disciplineId'], $headCoachUid, 'Elita Fundamentals', 1, '17:00', '18:00', 'Main Mat']);
+$db->prepare("INSERT INTO schedules (dojo_id, branch_id, discipline_id, coach_uid, name, day_of_week, start_time, end_time, location) VALUES (?,?,?,?,?,?,?,?,?)")
+   ->execute([$dojoId, $downtownBranchId, $elita['disciplineId'], $coachUid, 'Elita Sparring & Grappling', 3, '18:00', '19:15', 'Main Mat']);
+$db->prepare("INSERT INTO schedules (dojo_id, branch_id, discipline_id, coach_uid, name, day_of_week, start_time, end_time, location) VALUES (?,?,?,?,?,?,?,?,?)")
+   ->execute([$dojoId, $downtownBranchId, $karateDiscId, $coachUid, 'Traditional Karate', 5, '16:00', '17:00', 'Dojo B']);
+$db->prepare("INSERT INTO schedules (dojo_id, branch_id, discipline_id, coach_uid, name, day_of_week, start_time, end_time, location) VALUES (?,?,?,?,?,?,?,?,?)")
+   ->execute([$dojoId, $riverBranchId, $elita['disciplineId'], $riverCoachUid, 'Elita Riverside Fundamentals', 2, '17:30', '18:30', 'Riverside Mat']);
 
 // ── Sessions + attendance + coach comments ───────────────────────────────────
 $skillKeys = ['technique', 'fitness', 'discipline', 'focus', 'attitude', 'balance', 'reflex', 'speed', 'flexibility'];
@@ -225,14 +250,14 @@ function randomSkills(array $keys, int $count): array {
     return $out;
 }
 
-function createSession(PDO $db, string $dojoId, string $className, string $coachUid, int $daysAgo): int {
-    $db->prepare("INSERT INTO sessions (dojo_id, class_name, coach_uid, date, start_time, end_time, location, is_closed) VALUES (?,?,?,?,?,?,?,1)")
-        ->execute([$dojoId, $className, $coachUid, dateAgo($daysAgo), '17:00', '18:00', 'Main Mat']);
+function createSession(PDO $db, string $dojoId, int $branchId, string $className, string $coachUid, int $daysAgo): int {
+    $db->prepare("INSERT INTO sessions (dojo_id, branch_id, class_name, coach_uid, date, start_time, end_time, location, is_closed) VALUES (?,?,?,?,?,?,?,?,1)")
+        ->execute([$dojoId, $branchId, $className, $coachUid, dateAgo($daysAgo), '17:00', '18:00', 'Main Mat']);
     return (int)$db->lastInsertId();
 }
-function markAttendance(PDO $db, int $sessionId, int $studentId, string $status, string $markedBy): void {
-    $db->prepare("INSERT INTO attendance (session_id, student_id, status, marked_by) VALUES (?,?,?,?)")
-        ->execute([$sessionId, $studentId, $status, $markedBy]);
+function markAttendance(PDO $db, int $sessionId, int $branchId, int $studentId, string $status, string $markedBy): void {
+    $db->prepare("INSERT INTO attendance (session_id, branch_id, student_id, status, marked_by) VALUES (?,?,?,?,?)")
+        ->execute([$sessionId, $branchId, $studentId, $status, $markedBy]);
 }
 function addSessionComment(PDO $db, ?int $sessionId, int $studentId, string $coachUid, string $coachName, string $comment, array $skills, int $daysAgo): void {
     $db->prepare("INSERT INTO session_comments (session_id, student_id, coach_uid, coach_name, comment, skills, created_at) VALUES (?,?,?,?,?,?,?)")
@@ -245,10 +270,13 @@ $statuses = ['present', 'present', 'present', 'late', 'excused', 'absent'];
 
 foreach ($sessionOffsets as $i => $offset) {
     $coach = $i % 2 === 0 ? $headCoachUid : $coachUid;
-    $sessionId = createSession($db, $dojoId, $i % 2 === 0 ? 'Elita Fundamentals' : 'Elita Sparring & Grappling', $coach, $offset);
+    $sessionId = createSession($db, $dojoId, $downtownBranchId, $i % 2 === 0 ? 'Elita Fundamentals' : 'Elita Sparring & Grappling', $coach, $offset);
     foreach ($elitaStudents as $j => $sid) {
         $status = $statuses[($i + $j) % count($statuses)];
-        markAttendance($db, $sessionId, $sid, $status, $coach);
+        // Noah is a Riverside student attending a Downtown session (visiting
+        // for the Head Coach's overrule re-test) -- attendance branch_id
+        // still follows the session, per the denormalization rule.
+        markAttendance($db, $sessionId, $downtownBranchId, $sid, $status, $coach);
     }
     // One coach note per session, rotating which student gets it.
     $noteStudent = $elitaStudents[$i % count($elitaStudents)];
@@ -258,10 +286,15 @@ foreach ($sessionOffsets as $i => $offset) {
         randomSkills($skillKeys, 4), $offset);
 }
 
-$karateSessionId = createSession($db, $dojoId, 'Traditional Karate', $coachUid, 5);
-markAttendance($db, $karateSessionId, $graceId, 'present', $coachUid);
+$karateSessionId = createSession($db, $dojoId, $downtownBranchId, 'Traditional Karate', $coachUid, 5);
+markAttendance($db, $karateSessionId, $downtownBranchId, $graceId, 'present', $coachUid);
 addSessionComment($db, $karateSessionId, $graceId, $coachUid, 'Coach Diego Alvarez',
     'Kata form is really coming together ahead of testing.', randomSkills($skillKeys, 3), 5);
+
+$riverSessionId = createSession($db, $dojoId, $riverBranchId, 'Elita Riverside Fundamentals', $riverCoachUid, 4);
+markAttendance($db, $riverSessionId, $riverBranchId, $noahId, 'present', $riverCoachUid);
+addSessionComment($db, $riverSessionId, $noahId, $riverCoachUid, 'Coach Priya Nair',
+    'Strong showing on grappling defense at the Riverside branch.', randomSkills($skillKeys, 3), 4);
 
 // ── Loyalty ───────────────────────────────────────────────────────────────────
 function seedLoyalty(PDO $db, string $parentUid, string $dojoId, int $lifetimePoints, int $currentPoints): void {

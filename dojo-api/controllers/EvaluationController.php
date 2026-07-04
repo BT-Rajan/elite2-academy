@@ -47,13 +47,14 @@ class EvaluationController {
             ->check();
 
         $student = Tenant::student($this->db, $auth, $studentId);
+        Tenant::assertStudentBranchAccess($auth, $student, write: true);
         if (!$student['current_belt_id']) Response::error('Student has no current belt to evaluate against.', 422);
 
         $this->db->prepare("
-            INSERT INTO student_evaluations (student_id, belt_id, track, result, notes, coach_uid, coach_name)
-            VALUES (?,?,?,?,?,?,?)")
+            INSERT INTO student_evaluations (student_id, branch_id, belt_id, track, result, notes, coach_uid, coach_name)
+            VALUES (?,?,?,?,?,?,?,?)")
             ->execute([
-                $studentId, $student['current_belt_id'], $b['track'], $b['result'],
+                $studentId, $student['branch_id'], $student['current_belt_id'], $b['track'], $b['result'],
                 $b['notes'] ?? null, $auth['uid'], $b['coachName'] ?? '',
             ]);
         $evalId = $this->db->lastInsertId();
@@ -125,6 +126,7 @@ class EvaluationController {
         $b = $this->body();
 
         $student = Tenant::student($this->db, $auth, $studentId);
+        Tenant::assertStudentBranchAccess($auth, $student, write: true);
         if (!$student['current_belt_id']) Response::error('Student has no current belt.', 422);
 
         $readiness = $this->computeReadiness($auth, $studentId);
@@ -190,7 +192,7 @@ class EvaluationController {
         Validator::make($b)->required('points')->int('points')->check();
         $points = (int)($b['points'] ?? 0);
         if ($points === 0) Response::error('points must be a non-zero integer.');
-        Tenant::student($this->db, $auth, $studentId);
+        Tenant::assertStudentBranchAccess($auth, Tenant::student($this->db, $auth, $studentId), write: true);
 
         $this->db->prepare("
             INSERT INTO seminar_points_log (student_id, points, reason, awarded_by, awarded_by_name)
@@ -221,7 +223,7 @@ class EvaluationController {
     public function awardStripe(int $studentId): never {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireRole($auth, 'admin', 'coach');
-        Tenant::student($this->db, $auth, $studentId);
+        Tenant::assertStudentBranchAccess($auth, Tenant::student($this->db, $auth, $studentId), write: true);
         $this->db->prepare("UPDATE students SET bjj_stripes = bjj_stripes + 1 WHERE id = ?")
             ->execute([$studentId]);
         Response::ok(['updated' => true]);

@@ -20,13 +20,20 @@ CREATE TABLE IF NOT EXISTS users (
   token_version INT UNSIGNED NOT NULL DEFAULT 1,
   is_head_coach TINYINT(1) NOT NULL DEFAULT 0,
   dojo_id       VARCHAR(50) NOT NULL,
+  -- Home branch for coach/staff (which branch's students/sessions they
+  -- operate on day to day). NULL for admin, and for coach/staff pending
+  -- branch assignment by an admin/head coach -- a coach/staff with no
+  -- branch_id has no branch-scoped access until assigned. Admin and Head
+  -- Coach are never restricted to a single branch regardless of this value.
+  branch_id     INT UNSIGNED NULL,
   avatar_url    VARCHAR(255),
   phone         VARCHAR(30),
   is_active     TINYINT(1) NOT NULL DEFAULT 1,
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_dojo_role (dojo_id, role),
-  INDEX idx_approval (dojo_id, approval_status)
+  INDEX idx_approval (dojo_id, approval_status),
+  INDEX idx_branch (branch_id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS login_attempts (
@@ -68,6 +75,26 @@ CREATE TABLE IF NOT EXISTS dojos (
   settings   JSON,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- A dojo can operate multiple physical locations. Every operationally
+-- significant table below (users, students, sessions, attendance,
+-- evaluations, schedules) carries a branch_id so day-to-day data is scoped
+-- to a location, while curriculum (disciplines/belts) stays dojo-wide and
+-- shared across branches. Deleting a branch is a soft delete (is_active=0)
+-- via the API -- rows here are never hard-deleted while they still have
+-- students/staff assigned.
+CREATE TABLE IF NOT EXISTS branches (
+  id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  dojo_id    VARCHAR(50) NOT NULL,
+  name       VARCHAR(120) NOT NULL,
+  code       VARCHAR(20),
+  address    TEXT,
+  phone      VARCHAR(30),
+  is_active  TINYINT(1) NOT NULL DEFAULT 1,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_dojo (dojo_id, is_active)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS disciplines (
@@ -119,6 +146,7 @@ CREATE TABLE IF NOT EXISTS curriculum_syllabus (
 CREATE TABLE IF NOT EXISTS students (
   id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   dojo_id         VARCHAR(50) NOT NULL,
+  branch_id       INT UNSIGNED NOT NULL,
   parent_uid      VARCHAR(36) NOT NULL,
   first_name      VARCHAR(60) NOT NULL,
   last_name       VARCHAR(60) NOT NULL,
@@ -132,9 +160,27 @@ CREATE TABLE IF NOT EXISTS students (
   enrolled_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   is_active       TINYINT(1) NOT NULL DEFAULT 1,
   INDEX idx_dojo   (dojo_id),
+  INDEX idx_branch (branch_id),
   INDEX idx_parent (parent_uid),
   FOREIGN KEY (discipline_id)   REFERENCES disciplines(id) ON DELETE SET NULL,
-  FOREIGN KEY (current_belt_id) REFERENCES belts(id)       ON DELETE SET NULL
+  FOREIGN KEY (current_belt_id) REFERENCES belts(id)       ON DELETE SET NULL,
+  FOREIGN KEY (branch_id)       REFERENCES branches(id)    ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+-- Audit trail every time a student moves branches (transfer) or a
+-- staff/admin changes their assigned batch/discipline as part of that move.
+CREATE TABLE IF NOT EXISTS student_branch_transfers (
+  id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  student_id     INT UNSIGNED NOT NULL,
+  from_branch_id INT UNSIGNED NULL,
+  to_branch_id   INT UNSIGNED NOT NULL,
+  transferred_by VARCHAR(36) NOT NULL,
+  notes          TEXT,
+  transferred_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (student_id)     REFERENCES students(id) ON DELETE CASCADE,
+  FOREIGN KEY (from_branch_id) REFERENCES branches(id) ON DELETE SET NULL,
+  FOREIGN KEY (to_branch_id)   REFERENCES branches(id) ON DELETE RESTRICT,
+  INDEX idx_student (student_id, transferred_at)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS belt_history (
@@ -153,9 +199,13 @@ CREATE TABLE IF NOT EXISTS belt_history (
 -- A coach's per-track evaluation of a student against the belt they're
 -- currently working toward. Promotion aggregates the three tracks. A head
 -- coach (users.is_head_coach = 1) may overrule any evaluating coach's call.
+-- branch_id is copied from the student at insert time (same rationale as
+-- attendance above) so a coach's write access can be checked against the
+-- evaluation row itself without an extra join back to students.
 CREATE TABLE IF NOT EXISTS student_evaluations (
   id                 INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   student_id         INT UNSIGNED NOT NULL,
+  branch_id          INT UNSIGNED NOT NULL,
   belt_id            INT UNSIGNED NOT NULL,   -- belt being evaluated for
   track              ENUM('striking','grappling','selfdefense') NOT NULL,
   result             ENUM('pass','fail') NOT NULL,
@@ -170,7 +220,9 @@ CREATE TABLE IF NOT EXISTS student_evaluations (
   overruled_at       DATETIME NULL,
   FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
   FOREIGN KEY (belt_id)    REFERENCES belts(id)     ON DELETE CASCADE,
-  INDEX idx_student_belt (student_id, belt_id)
+  FOREIGN KEY (branch_id)  REFERENCES branches(id)  ON DELETE RESTRICT,
+  INDEX idx_student_belt (student_id, belt_id),
+  INDEX idx_branch (branch_id)
 ) ENGINE=InnoDB;
 
 -- Audit trail for seminar points (Self-Defense & Traditional track), which
@@ -201,6 +253,7 @@ CREATE TABLE IF NOT EXISTS student_objectives (
 CREATE TABLE IF NOT EXISTS schedules (
   id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   dojo_id       VARCHAR(50) NOT NULL,
+  branch_id     INT UNSIGNED NOT NULL,
   discipline_id INT UNSIGNED,
   coach_uid     VARCHAR(36) NOT NULL,
   name          VARCHAR(120) NOT NULL,
@@ -210,12 +263,15 @@ CREATE TABLE IF NOT EXISTS schedules (
   location      VARCHAR(100),
   is_active     TINYINT(1) NOT NULL DEFAULT 1,
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_dojo (dojo_id, is_active, day_of_week)
+  INDEX idx_dojo   (dojo_id, is_active, day_of_week),
+  INDEX idx_branch (branch_id, is_active, day_of_week),
+  FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS sessions (
   id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   dojo_id       VARCHAR(50) NOT NULL,
+  branch_id     INT UNSIGNED NOT NULL,
   class_name    VARCHAR(120) NOT NULL,
   coach_uid     VARCHAR(36) NOT NULL,
   date          DATE NOT NULL,
@@ -224,8 +280,10 @@ CREATE TABLE IF NOT EXISTS sessions (
   location      VARCHAR(100),
   is_closed     TINYINT(1) NOT NULL DEFAULT 0,
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_dojo  (dojo_id),
-  INDEX idx_coach (coach_uid, date)
+  INDEX idx_dojo   (dojo_id),
+  INDEX idx_branch (branch_id, date),
+  INDEX idx_coach  (coach_uid, date),
+  FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS session_comments (
@@ -242,16 +300,22 @@ CREATE TABLE IF NOT EXISTS session_comments (
   INDEX idx_student (student_id)
 ) ENGINE=InnoDB;
 
+-- branch_id is copied from the session at insert time (rather than joined
+-- every read) so attendance rows are directly branch-filterable/auditable
+-- even if a session's branch were ever corrected after the fact.
 CREATE TABLE IF NOT EXISTS attendance (
   id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   session_id INT UNSIGNED NOT NULL,
+  branch_id  INT UNSIGNED NOT NULL,
   student_id INT UNSIGNED NOT NULL,
   status     ENUM('present','late','excused','absent') NOT NULL,
   marked_by  VARCHAR(36) NOT NULL,
   marked_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
+  FOREIGN KEY (branch_id)  REFERENCES branches(id) ON DELETE RESTRICT,
   UNIQUE KEY uq_session_student (session_id, student_id),
-  INDEX idx_student (student_id, marked_at)
+  INDEX idx_student (student_id, marked_at),
+  INDEX idx_branch  (branch_id, marked_at)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS threads (

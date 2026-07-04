@@ -99,13 +99,17 @@ class GenericController {
     public function listSchedules(): never {
         $auth     = AuthMiddleware::require();
         $isActive = $_GET['isActive'] ?? '1';
-        $stmt = $this->db->prepare("
+        $branchId = isset($_GET['branchId']) ? (int)$_GET['branchId'] : null;
+        $sql = "
             SELECT sc.*, d.name AS discipline_name, d.color AS discipline_color
             FROM schedules sc
             LEFT JOIN disciplines d ON d.id = sc.discipline_id
-            WHERE sc.dojo_id = ? AND sc.is_active = ?
-            ORDER BY sc.day_of_week, sc.start_time");
-        $stmt->execute([Tenant::dojoId($auth), (int)$isActive]);
+            WHERE sc.dojo_id = ? AND sc.is_active = ?";
+        $p = [Tenant::dojoId($auth), (int)$isActive];
+        if ($branchId) { $sql .= " AND sc.branch_id = ?"; $p[] = $branchId; }
+        $sql .= " ORDER BY sc.day_of_week, sc.start_time";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($p);
         Response::ok($stmt->fetchAll());
     }
     public function createSchedule(): never {
@@ -117,14 +121,24 @@ class GenericController {
             ->int('dayOfWeek', 0, 6)
             ->time('startTime')
             ->time('endTime')
+            ->int('branchId', 1)
             ->check();
-        $this->db->prepare("INSERT INTO schedules (dojo_id, discipline_id, coach_uid, name, day_of_week, start_time, end_time, location) VALUES (?,?,?,?,?,?,?,?)")
-            ->execute([$auth['dojoId'], $b['disciplineId'] ?? null, $b['coachUid'] ?? $auth['uid'], $b['name'] ?? 'Class', $b['dayOfWeek'] ?? 0, $b['startTime'] ?? '09:00', $b['endTime'] ?? '10:00', $b['location'] ?? null]);
+        $branchId = !empty($b['branchId']) ? (int)$b['branchId'] : Tenant::branchId($auth);
+        if (!$branchId) Response::error('branchId is required.', 422);
+        Tenant::assertBranchWriteAccess($auth, $branchId);
+        Tenant::branch($this->db, $auth, $branchId); // validates it belongs to this dojo
+        $this->db->prepare("INSERT INTO schedules (dojo_id, branch_id, discipline_id, coach_uid, name, day_of_week, start_time, end_time, location) VALUES (?,?,?,?,?,?,?,?,?)")
+            ->execute([$auth['dojoId'], $branchId, $b['disciplineId'] ?? null, $b['coachUid'] ?? $auth['uid'], $b['name'] ?? 'Class', $b['dayOfWeek'] ?? 0, $b['startTime'] ?? '09:00', $b['endTime'] ?? '10:00', $b['location'] ?? null]);
         Response::created(['id' => $this->db->lastInsertId()]);
     }
     public function updateSchedule(int $id): never {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireRole($auth, 'admin', 'coach');
+        $existing = $this->db->prepare("SELECT branch_id FROM schedules WHERE id = ? AND dojo_id = ?");
+        $existing->execute([$id, $auth['dojoId']]);
+        $row = $existing->fetch();
+        if (!$row) Response::notFound('Schedule not found.');
+        Tenant::assertBranchWriteAccess($auth, (int)$row['branch_id']);
         $b = $this->body();
         $stmt = $this->db->prepare("UPDATE schedules SET name=?, day_of_week=?, start_time=?, end_time=?, location=?, is_active=? WHERE id=? AND dojo_id=?");
         $stmt->execute([$b['name'] ?? '', $b['dayOfWeek'] ?? 0, $b['startTime'] ?? '09:00', $b['endTime'] ?? '10:00', $b['location'] ?? null, (int)($b['isActive'] ?? 1), $id, $auth['dojoId']]);
@@ -306,12 +320,14 @@ class GenericController {
 
     // ── Users ─────────────────────────────────────────────────────────────────
     public function listUsers(): never {
-        $auth = AuthMiddleware::require();
-        $role = $_GET['role'] ?? null;
-        $sql = "SELECT uid, email, display_name, role, is_head_coach, dojo_id, avatar_url, created_at
+        $auth     = AuthMiddleware::require();
+        $role     = $_GET['role'] ?? null;
+        $branchId = isset($_GET['branchId']) ? (int)$_GET['branchId'] : null;
+        $sql = "SELECT uid, email, display_name, role, is_head_coach, dojo_id, branch_id, avatar_url, created_at
                 FROM users WHERE dojo_id = ? AND is_active = 1 AND approval_status = 'approved'";
         $p = [Tenant::dojoId($auth)];
-        if ($role) { $sql .= " AND role = ?"; $p[] = $role; }
+        if ($role)     { $sql .= " AND role = ?";      $p[] = $role; }
+        if ($branchId) { $sql .= " AND branch_id = ?"; $p[] = $branchId; }
         $sql .= " ORDER BY display_name";
         $stmt = $this->db->prepare($sql); $stmt->execute($p);
         Response::ok($stmt->fetchAll());
