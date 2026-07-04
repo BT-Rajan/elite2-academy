@@ -12,12 +12,13 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
 import { StatCardComponent } from '../../../shared/components/stat-card/stat-card.component';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { LoadingComponent } from '../../../shared/components/loading/loading.component';
 
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
   imports: [CommonModule, AsyncPipe, DatePipe, RouterLink,
-            PageHeaderComponent, StatCardComponent, AvatarComponent, EmptyStateComponent],
+            PageHeaderComponent, StatCardComponent, AvatarComponent, EmptyStateComponent, LoadingComponent],
   template: `
     <dojo-page-header
       [title]="greeting()"
@@ -39,7 +40,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
           <span class="card__title">Recent Students</span>
           <a routerLink="/admin/students" class="btn btn--ghost btn--sm">View all</a>
         </div>
-        <div *ngIf="students$ | async as students">
+        <div *ngIf="students$ | async as students; else cardLoading">
           <dojo-empty-state *ngIf="students.length === 0"
             icon="🧒" title="No students yet" subtitle="Parents enrol children after signing up.">
           </dojo-empty-state>
@@ -85,7 +86,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
           <span class="card__title">Recent Sessions</span>
           <a routerLink="/coach/attendance" class="btn btn--primary btn--sm">+ New</a>
         </div>
-        <div *ngIf="sessions$ | async as sessions">
+        <div *ngIf="sessions$ | async as sessions; else cardLoading">
           <dojo-empty-state *ngIf="sessions.length === 0"
             icon="📅" title="No sessions" subtitle="Sessions appear here as coaches take attendance.">
           </dojo-empty-state>
@@ -107,6 +108,8 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
           </table>
         </div>
       </div>
+
+      <ng-template #cardLoading><dojo-loading></dojo-loading></ng-template>
 
       <!-- Getting started checklist -->
       <div class="card">

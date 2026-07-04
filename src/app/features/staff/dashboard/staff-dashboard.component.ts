@@ -9,13 +9,14 @@ import { SessionService } from '../../../core/services/session.service';
 import { ClassSchedule, Student, ClassSession } from '../../../core/models';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { LoadingComponent } from '../../../shared/components/loading/loading.component';
 
 const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
 @Component({
   selector: 'app-staff-dashboard',
   standalone: true,
-  imports: [CommonModule, AsyncPipe, RouterLink, PageHeaderComponent, EmptyStateComponent],
+  imports: [CommonModule, AsyncPipe, RouterLink, PageHeaderComponent, EmptyStateComponent, LoadingComponent],
   template: `
     <dojo-page-header
       [title]="'Welcome, ' + (auth.currentUser()?.displayName || 'Staff')"
@@ -44,7 +45,7 @@ const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
           <span class="card__title">Today's Schedule</span>
           <a routerLink="/staff/schedule" class="btn btn--secondary btn--sm">View all</a>
         </div>
-        <div *ngIf="schedules$ | async as schedules">
+        <div *ngIf="schedules$ | async as schedules; else cardLoading">
           <dojo-empty-state *ngIf="todaysClasses(schedules).length === 0"
             icon="📅" title="No classes today" subtitle="Check back on a class day.">
           </dojo-empty-state>
@@ -64,7 +65,7 @@ const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
       <!-- Recent sessions -->
       <div class="card">
         <div class="card__header"><span class="card__title">Recent Sessions</span></div>
-        <div *ngIf="sessions$ | async as sessions">
+        <div *ngIf="sessions$ | async as sessions; else cardLoading">
           <dojo-empty-state *ngIf="sessions.length === 0"
             icon="🥋" title="No sessions logged yet" subtitle="">
           </dojo-empty-state>
@@ -83,6 +84,7 @@ const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
         </div>
       </div>
     </div>
+    <ng-template #cardLoading><dojo-loading></dojo-loading></ng-template>
   `
 })
 export class StaffDashboardComponent implements OnInit {

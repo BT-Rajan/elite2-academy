@@ -8,13 +8,14 @@ import { Student } from '../../../core/models';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { LoadingComponent } from '../../../shared/components/loading/loading.component';
 import { calcAge } from '../../../core/utils';
 
 @Component({
   selector: 'app-staff-students',
   standalone: true,
   imports: [CommonModule, AsyncPipe, DatePipe, FormsModule,
-            PageHeaderComponent, AvatarComponent, EmptyStateComponent],
+            PageHeaderComponent, AvatarComponent, EmptyStateComponent, LoadingComponent],
   template: `
     <dojo-page-header title="Students" subtitle="Roster directory"></dojo-page-header>
 
@@ -22,7 +23,7 @@ import { calcAge } from '../../../core/utils';
       <input class="input" [(ngModel)]="search" placeholder="🔍  Search by name or discipline…" style="max-width:360px">
     </div>
 
-    <div *ngIf="students$ | async as all">
+    <ng-container *ngIf="students$ | async as all; else loadingTpl">
       <dojo-empty-state *ngIf="all.length === 0"
         icon="🧒" title="No students yet" subtitle="Students will appear here once enrolled.">
       </dojo-empty-state>
@@ -54,7 +55,10 @@ import { calcAge } from '../../../core/utils';
           </tbody>
         </table>
       </div>
-    </div>
+    </ng-container>
+    <ng-template #loadingTpl>
+      <dojo-loading label="Loading students…"></dojo-loading>
+    </ng-template>
   `
 })
 export class StaffStudentsComponent implements OnInit {

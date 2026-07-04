@@ -9,13 +9,14 @@ import { ClassSession, Student } from '../../../core/models';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { LoadingComponent } from '../../../shared/components/loading/loading.component';
 import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
 
 @Component({
   selector: 'app-coach-dashboard',
   standalone: true,
   imports: [CommonModule, AsyncPipe, RouterLink, PageHeaderComponent,
-            AvatarComponent, EmptyStateComponent, TimeAgoPipe],
+            AvatarComponent, EmptyStateComponent, LoadingComponent, TimeAgoPipe],
   template: `
     <dojo-page-header
       [title]="'Welcome, ' + (auth.currentUser()?.displayName || 'Coach')"
@@ -29,7 +30,7 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
           <span class="card__title">Recent Sessions</span>
           <a routerLink="/coach/attendance" class="btn btn--primary btn--sm">+ New Session</a>
         </div>
-        <div *ngIf="sessions$ | async as sessions">
+        <div *ngIf="sessions$ | async as sessions; else cardLoading">
           <div *ngIf="sessions.length === 0">
             <dojo-empty-state icon="📅" title="No sessions yet" subtitle="Start taking attendance to see sessions here."></dojo-empty-state>
           </div>
@@ -54,7 +55,7 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
           <span class="card__title">My Students</span>
           <a routerLink="/coach/students" class="btn btn--secondary btn--sm">View all</a>
         </div>
-        <div *ngIf="students$ | async as students">
+        <div *ngIf="students$ | async as students; else cardLoading">
           <dojo-empty-state *ngIf="students.length === 0" icon="🧒" title="No students assigned" subtitle="Students are assigned by admin."></dojo-empty-state>
           <div *ngFor="let s of students | slice:0:6"
                style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border);cursor:pointer"
@@ -68,6 +69,7 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
         </div>
       </div>
     </div>
+    <ng-template #cardLoading><dojo-loading></dojo-loading></ng-template>
   `
 })
 export class CoachDashboardComponent implements OnInit {

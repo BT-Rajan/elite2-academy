@@ -9,20 +9,21 @@ import { Student, LoyaltyAccount } from '../../../core/models';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { LoadingComponent } from '../../../shared/components/loading/loading.component';
 import { LOYALTY_TIER_COLORS } from '../../../core/utils';
 
 @Component({
   selector: 'app-parent-dashboard',
   standalone: true,
   imports: [CommonModule, AsyncPipe, RouterLink, TitleCasePipe,
-            PageHeaderComponent, AvatarComponent, EmptyStateComponent],
+            PageHeaderComponent, AvatarComponent, EmptyStateComponent, LoadingComponent],
   template: `
     <dojo-page-header
       [title]="greeting"
       subtitle="Your child's progress at a glance">
     </dojo-page-header>
 
-    <ng-container *ngIf="students$ | async as students">
+    <ng-container *ngIf="students$ | async as students; else loadingChildren">
       <dojo-empty-state *ngIf="students.length === 0"
         icon="🧒" title="No children linked yet"
         subtitle="Contact your dojo admin to link your child's profile.">
@@ -42,6 +43,7 @@ import { LOYALTY_TIER_COLORS } from '../../../core/utils';
         </div>
       </div>
     </ng-container>
+    <ng-template #loadingChildren><dojo-loading label="Loading your children…"></dojo-loading></ng-template>
 
     <ng-container *ngIf="loyalty$ | async as loyalty">
       <div class="card mb-4" *ngIf="loyalty">
