@@ -66,10 +66,10 @@ export class NotificationsComponent implements OnInit {
   }
 
   async read(n: Notification) {
-    if (!n.isRead) await this.ns.markRead(n.id);
+    if (!n.isRead) await this.ns.markRead(n.id).catch(() => {});
   }
 
   async markAll() {
-    await this.ns.markAllRead(this.auth.currentUser()!.uid);
+    await this.ns.markAllRead(this.auth.currentUser()!.uid).catch(() => {});
   }
 }

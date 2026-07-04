@@ -10,6 +10,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
+import { ToastService } from '../../../core/services/toast.service';
 
 @Component({
   selector: 'app-coach-messages',
@@ -120,9 +121,10 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
   `]
 })
 export class CoachMessagesComponent implements OnInit {
-  private auth = inject(AuthService);
-  private ms   = inject(MessageService);
-  private sts  = inject(StudentService);
+  private auth  = inject(AuthService);
+  private ms    = inject(MessageService);
+  private sts   = inject(StudentService);
+  private toast = inject(ToastService);
 
   threads$!:  Observable<MessageThread[]>;
   messages$?: Observable<Message[]>;
@@ -143,30 +145,39 @@ export class CoachMessagesComponent implements OnInit {
   openThread(t: MessageThread) {
     this.activeThread.set(t);
     this.messages$ = this.ms.messages$(t.id);
-    this.ms.markRead(t.id, 'coach');
+    this.ms.markRead(t.id, 'coach').catch(() => {});
   }
 
   async createThread() {
     if (!this.newThreadStudentId) return;
     const user = this.auth.currentUser()!;
-    const id = await this.ms.create({
-      dojoId: user.dojoId, studentId: this.newThreadStudentId,
-      parentUid: 'pending', coachUid: user.uid,
-      unreadParent: 0, unreadCoach: 0,
-    });
-    this.showNewThread.set(false);
-    this.newThreadStudentId = '';
+    try {
+      await this.ms.create({
+        dojoId: user.dojoId, studentId: this.newThreadStudentId,
+        parentUid: 'pending', coachUid: user.uid,
+        unreadParent: 0, unreadCoach: 0,
+      });
+      this.showNewThread.set(false);
+      this.newThreadStudentId = '';
+    } catch (e: any) {
+      this.toast.error(e.message ?? 'Could not start conversation.');
+    }
   }
 
   async sendMessage() {
     const t = this.activeThread();
     if (!t || !this.messageText.trim()) return;
     const user = this.auth.currentUser()!;
-    await this.ms.send(t.id, {
-      threadId: t.id, fromUid: user.uid,
-      fromName: user.displayName, fromRole: 'coach',
-      text: this.messageText.trim(), sentAt: new Date() as any,
-    });
-    this.messageText = '';
+    const text = this.messageText.trim();
+    try {
+      await this.ms.send(t.id, {
+        threadId: t.id, fromUid: user.uid,
+        fromName: user.displayName, fromRole: 'coach',
+        text, sentAt: new Date() as any,
+      });
+      this.messageText = '';
+    } catch (e: any) {
+      this.toast.error(e.message ?? 'Message failed to send. Try again.');
+    }
   }
 }

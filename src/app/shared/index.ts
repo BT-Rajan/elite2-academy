@@ -5,5 +5,6 @@ export * from './components/loading/loading.component';
 export * from './components/page-header/page-header.component';
 export * from './components/skill-bar/skill-bar.component';
 export * from './components/stat-card/stat-card.component';
+export * from './components/toast/toast.component';
 export * from './pipes/time-ago.pipe';
 export * from './pipes/initials.pipe';

@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Observable, switchMap, of } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
 import { DisciplineService } from '../../../core/services/discipline.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { Discipline, Belt } from '../../../core/models';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
@@ -145,8 +146,9 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
   `
 })
 export class DisciplinesComponent implements OnInit {
-  private auth = inject(AuthService);
-  private ds   = inject(DisciplineService);
+  private auth  = inject(AuthService);
+  private ds    = inject(DisciplineService);
+  private toast = inject(ToastService);
 
   disciplines$!: Observable<Discipline[]>;
   private beltCache = new Map<string, Observable<Belt[]>>();
@@ -182,39 +184,51 @@ export class DisciplinesComponent implements OnInit {
   async addDiscipline() {
     if (!this.newDisc.name) { this.discError.set('Name is required.'); return; }
     this.saving.set(true); this.discError.set('');
-    await this.ds.create({
-      dojoId: this.auth.currentUser()!.dojoId,
-      name: this.newDisc.name,
-      color: this.newDisc.color,
-      description: this.newDisc.description,
-    });
-    this.newDisc = { name: '', color: '#3b82f6', description: '' };
-    this.showAddDisc.set(false);
-    this.saving.set(false);
-    this.disciplines$ = this.ds.byDojo$(this.auth.currentUser()!.dojoId);
+    try {
+      await this.ds.create({
+        dojoId: this.auth.currentUser()!.dojoId,
+        name: this.newDisc.name,
+        color: this.newDisc.color,
+        description: this.newDisc.description,
+      });
+      this.newDisc = { name: '', color: '#3b82f6', description: '' };
+      this.showAddDisc.set(false);
+      this.disciplines$ = this.ds.byDojo$(this.auth.currentUser()!.dojoId);
+      this.toast.success('Discipline added.');
+    } catch (e: any) {
+      this.discError.set(e.message ?? 'Could not add discipline.');
+    } finally {
+      this.saving.set(false);
+    }
   }
 
   async addBelt(discId: string) {
     if (!this.newBelt.name) { this.beltError.set('Belt name is required.'); return; }
     this.saving.set(true); this.beltError.set('');
-    await this.ds.addBelt(discId, {
-      disciplineId: discId,
-      name: this.newBelt.name,
-      colorHex: this.newBelt.colorHex,
-      sortOrder: this.newBelt.sortOrder,
-      minClasses: this.newBelt.minClasses,
-      minScore: this.newBelt.minScore,
-      kickboxingLevel: this.newBelt.kickboxingLevel || undefined,
-      bjjStripeLabel: this.newBelt.bjjStripeLabel || undefined,
-      seminarPointsRequired: this.newBelt.seminarPointsRequired || 0,
-    });
-    this.newBelt = {
-      name: '', colorHex: '#ffffff', sortOrder: 1, minClasses: 10, minScore: 5,
-      kickboxingLevel: '', bjjStripeLabel: '', seminarPointsRequired: 0,
-    };
-    this.saving.set(false);
-    // Refresh this discipline's belt list — it's cached so the newly
-    // added belt would otherwise stay invisible until a full page reload.
-    this.beltCache.set(discId, this.ds.belts$(discId));
+    try {
+      await this.ds.addBelt(discId, {
+        disciplineId: discId,
+        name: this.newBelt.name,
+        colorHex: this.newBelt.colorHex,
+        sortOrder: this.newBelt.sortOrder,
+        minClasses: this.newBelt.minClasses,
+        minScore: this.newBelt.minScore,
+        kickboxingLevel: this.newBelt.kickboxingLevel || undefined,
+        bjjStripeLabel: this.newBelt.bjjStripeLabel || undefined,
+        seminarPointsRequired: this.newBelt.seminarPointsRequired || 0,
+      });
+      this.newBelt = {
+        name: '', colorHex: '#ffffff', sortOrder: 1, minClasses: 10, minScore: 5,
+        kickboxingLevel: '', bjjStripeLabel: '', seminarPointsRequired: 0,
+      };
+      // Refresh this discipline's belt list — it's cached so the newly
+      // added belt would otherwise stay invisible until a full page reload.
+      this.beltCache.set(discId, this.ds.belts$(discId));
+      this.toast.success('Belt added.');
+    } catch (e: any) {
+      this.beltError.set(e.message ?? 'Could not add belt.');
+    } finally {
+      this.saving.set(false);
+    }
   }
 }

@@ -3,6 +3,7 @@ import { CommonModule, AsyncPipe, DatePipe, TitleCasePipe } from '@angular/commo
 import { Observable } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
 import { LoyaltyService } from '../../../core/services/loyalty.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { LoyaltyAccount, LoyaltyTransaction, LoyaltyReward } from '../../../core/models';
 import { LOYALTY_TIER_COLORS } from '../../../core/utils';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -199,8 +200,9 @@ const TIER_ICONS: Record<string, string> = {
   `]
 })
 export class LoyaltyComponent implements OnInit {
-  private auth = inject(AuthService);
-  private ls   = inject(LoyaltyService);
+  private auth  = inject(AuthService);
+  private ls    = inject(LoyaltyService);
+  private toast = inject(ToastService);
 
   account$!:      Observable<LoyaltyAccount | undefined>;
   transactions$!: Observable<LoyaltyTransaction[]>;
@@ -256,6 +258,9 @@ export class LoyaltyComponent implements OnInit {
     this.redeeming.set(true);
     try {
       await this.ls.redeem(acct.id, reward);
+      this.toast.success(`Redeemed: ${reward.name}!`);
+    } catch (e: any) {
+      this.toast.error(e.message ?? 'Could not redeem reward.');
     } finally {
       this.redeeming.set(false);
     }

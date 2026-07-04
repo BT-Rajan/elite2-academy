@@ -5,6 +5,7 @@ import { Observable } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
 import { MessageService } from '../../../core/services/message.service';
 import { StudentService } from '../../../core/services/student.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { MessageThread, Message, Student } from '../../../core/models';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
@@ -130,9 +131,10 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
   `]
 })
 export class ParentMessagesComponent implements OnInit {
-  private auth = inject(AuthService);
-  private ms   = inject(MessageService);
-  private sts  = inject(StudentService);
+  private auth  = inject(AuthService);
+  private ms    = inject(MessageService);
+  private sts   = inject(StudentService);
+  private toast = inject(ToastService);
 
   threads$!:  Observable<MessageThread[]>;
   messages$?: Observable<Message[]>;
@@ -165,18 +167,23 @@ export class ParentMessagesComponent implements OnInit {
   openThread(t: MessageThread) {
     this.activeThread.set(t);
     this.messages$ = this.ms.messages$(t.id);
-    this.ms.markRead(t.id, 'parent');
+    this.ms.markRead(t.id, 'parent').catch(() => {});
   }
 
   async sendMessage() {
     const t = this.activeThread();
     if (!t || !this.messageText.trim()) return;
     const user = this.auth.currentUser()!;
-    await this.ms.send(t.id, {
-      threadId: t.id, fromUid: user.uid,
-      fromName: user.displayName, fromRole: 'parent',
-      text: this.messageText.trim(), sentAt: new Date() as any,
-    });
-    this.messageText = '';
+    const text = this.messageText.trim();
+    try {
+      await this.ms.send(t.id, {
+        threadId: t.id, fromUid: user.uid,
+        fromName: user.displayName, fromRole: 'parent',
+        text, sentAt: new Date() as any,
+      });
+      this.messageText = '';
+    } catch (e: any) {
+      this.toast.error(e.message ?? 'Message failed to send. Try again.');
+    }
   }
 }

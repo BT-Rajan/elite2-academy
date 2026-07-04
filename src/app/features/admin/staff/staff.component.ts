@@ -5,6 +5,7 @@ import { Observable } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
 import { UserService } from '../../../core/services/user.service';
 import { StudentService } from '../../../core/services/student.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { UserProfile, Student } from '../../../core/models';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
@@ -254,6 +255,7 @@ export class StaffComponent implements OnInit {
   private auth  = inject(AuthService);
   private us    = inject(UserService);
   private sts   = inject(StudentService);
+  private toast = inject(ToastService);
 
   coaches$!: Observable<UserProfile[]>;
   staff$!: Observable<UserProfile[]>;
@@ -279,10 +281,15 @@ export class StaffComponent implements OnInit {
   }
 
   async toggleHeadCoach(coach: UserProfile) {
-    await this.us.setHeadCoach(coach.uid, !coach.isHeadCoach);
-    coach.isHeadCoach = !coach.isHeadCoach;
-    this.selectedCoach.set({ ...coach });
-    this.coaches$ = this.us.coaches$(this.auth.currentUser()!.dojoId);
+    try {
+      await this.us.setHeadCoach(coach.uid, !coach.isHeadCoach);
+      coach.isHeadCoach = !coach.isHeadCoach;
+      this.selectedCoach.set({ ...coach });
+      this.coaches$ = this.us.coaches$(this.auth.currentUser()!.dojoId);
+      this.toast.success(coach.isHeadCoach ? `${coach.displayName} is now Head Coach.` : `Head Coach designation removed.`);
+    } catch (e: any) {
+      this.toast.error(e.message ?? 'Could not update Head Coach status.');
+    }
   }
 
   filterUsers(users: UserProfile[]): UserProfile[] {

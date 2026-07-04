@@ -5,6 +5,7 @@ import { Observable } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { LoyaltyService } from '../../../core/services/loyalty.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { LoyaltyReward } from '../../../core/models';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
@@ -233,6 +234,7 @@ export class AdminSettingsComponent implements OnInit {
   private auth      = inject(AuthService);
   private ls        = inject(LoyaltyService);
   private api       = inject(ApiService);
+  private toast     = inject(ToastService);
 
   rewards$!: Observable<LoyaltyReward[]>;
 
@@ -319,50 +321,77 @@ export class AdminSettingsComponent implements OnInit {
 
   async savePointRules() {
     this.saving.set(true);
-    const rules = Object.fromEntries(this.pointRules.map(r => [r.key, r.points]));
-    await this.api.patch<void>(`/dojos/${this.dojoId()}/settings`, { pointRules: rules }).toPromise();
-    this.saved.set(true);
-    setTimeout(() => this.saved.set(false), 3000);
-    this.saving.set(false);
+    try {
+      const rules = Object.fromEntries(this.pointRules.map(r => [r.key, r.points]));
+      await this.api.patch<void>(`/dojos/${this.dojoId()}/settings`, { pointRules: rules }).toPromise();
+      this.saved.set(true);
+      setTimeout(() => this.saved.set(false), 3000);
+    } catch (e: any) {
+      this.toast.error(e.message ?? 'Could not save point rules.');
+    } finally {
+      this.saving.set(false);
+    }
   }
 
   async saveTiers() {
     this.saving.set(true);
-    const thresholds = Object.fromEntries(this.tiers.map(t => [t.name.toLowerCase(), t.threshold]));
-    await this.api.patch<void>(`/dojos/${this.dojoId()}/settings`, { tierThresholds: thresholds }).toPromise();
-    this.saved.set(true);
-    setTimeout(() => this.saved.set(false), 3000);
-    this.saving.set(false);
+    try {
+      const thresholds = Object.fromEntries(this.tiers.map(t => [t.name.toLowerCase(), t.threshold]));
+      await this.api.patch<void>(`/dojos/${this.dojoId()}/settings`, { tierThresholds: thresholds }).toPromise();
+      this.saved.set(true);
+      setTimeout(() => this.saved.set(false), 3000);
+    } catch (e: any) {
+      this.toast.error(e.message ?? 'Could not save tiers.');
+    } finally {
+      this.saving.set(false);
+    }
   }
 
   async saveNotifPrefs() {
     this.saving.set(true);
-    const prefs = Object.fromEntries(this.notifPrefs.map(p => [p.key, p.enabled]));
-    await this.api.patch<void>(`/dojos/${this.dojoId()}/settings`, { notifPrefs: prefs }).toPromise();
-    this.saved.set(true);
-    setTimeout(() => this.saved.set(false), 3000);
-    this.saving.set(false);
+    try {
+      const prefs = Object.fromEntries(this.notifPrefs.map(p => [p.key, p.enabled]));
+      await this.api.patch<void>(`/dojos/${this.dojoId()}/settings`, { notifPrefs: prefs }).toPromise();
+      this.saved.set(true);
+      setTimeout(() => this.saved.set(false), 3000);
+    } catch (e: any) {
+      this.toast.error(e.message ?? 'Could not save notification preferences.');
+    } finally {
+      this.saving.set(false);
+    }
   }
 
   async addReward() {
     if (!this.newReward.name) return;
     this.saving.set(true);
-    await this.api.post<void>('/loyalty-rewards', {
-      dojoId:      this.dojoId(),
-      name:        this.newReward.name,
-      description: this.newReward.description,
-      pointsCost:  this.newReward.pointsCost,
-      type:        this.newReward.type as LoyaltyReward['type'],
-      discountPct: this.newReward.type === 'discount' ? this.newReward.discountPct : null,
-      isActive:    true,
-    }).toPromise();
-    this.newReward = { name: '', type: 'discount', pointsCost: 500, description: '', discountPct: 10, isActive: true };
-    this.showAddReward.set(false);
-    this.saving.set(false);
+    try {
+      await this.api.post<void>('/loyalty-rewards', {
+        dojoId:      this.dojoId(),
+        name:        this.newReward.name,
+        description: this.newReward.description,
+        pointsCost:  this.newReward.pointsCost,
+        type:        this.newReward.type as LoyaltyReward['type'],
+        discountPct: this.newReward.type === 'discount' ? this.newReward.discountPct : null,
+        isActive:    true,
+      }).toPromise();
+      this.newReward = { name: '', type: 'discount', pointsCost: 500, description: '', discountPct: 10, isActive: true };
+      this.showAddReward.set(false);
+      this.rewards$ = this.ls.rewards$(this.dojoId());
+      this.toast.success('Reward added.');
+    } catch (e: any) {
+      this.toast.error(e.message ?? 'Could not add reward.');
+    } finally {
+      this.saving.set(false);
+    }
   }
 
   async toggleReward(r: LoyaltyReward) {
-    await this.api.patch<void>(`/loyalty-rewards/${r.id}`, { isActive: !r.isActive }).toPromise();
+    try {
+      await this.api.patch<void>(`/loyalty-rewards/${r.id}`, { isActive: !r.isActive }).toPromise();
+      this.rewards$ = this.ls.rewards$(this.dojoId());
+    } catch (e: any) {
+      this.toast.error(e.message ?? 'Could not update reward.');
+    }
   }
 
   rewardIcon(type: string): string {

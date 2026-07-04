@@ -18,6 +18,7 @@ import { BadgeComponent } from '../../../shared/components/badge/badge.component
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { RoadmapComponent } from '../../../shared/components/roadmap/roadmap.component';
 import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
+import { ToastService } from '../../../core/services/toast.service';
 
 type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments';
 
@@ -388,6 +389,7 @@ export class StudentDetailComponent implements OnInit {
   private as_     = inject(AttendanceService);
   private bs      = inject(BeltService);
   private es      = inject(EvaluationService);
+  private toast   = inject(ToastService);
 
   student$!:    Observable<Student | undefined>;
   comments$!:   Observable<SessionComment[]>;
@@ -479,54 +481,79 @@ export class StudentDetailComponent implements OnInit {
     const user = this.auth.currentUser()!;
     const studentId = String(student.id);
 
-    await this.sts.addComment(studentId, {
-      studentId,
-      coachUid: user.uid, coachName: user.displayName,
-      comment: this.skillComment || 'Skill assessment updated.',
-      skills: { ...this.editSkills } as any,
-      createdAt: new Date() as any,
-    });
-
-    this.currentSkills.set({ ...this.editSkills });
-    this.savingSkills.set(false);
-    this.skillComment = '';
+    try {
+      await this.sts.addComment(studentId, {
+        studentId,
+        coachUid: user.uid, coachName: user.displayName,
+        comment: this.skillComment || 'Skill assessment updated.',
+        skills: { ...this.editSkills } as any,
+        createdAt: new Date() as any,
+      });
+      this.currentSkills.set({ ...this.editSkills });
+      this.skillComment = '';
+      this.toast.success('Skill assessment saved.');
+    } catch (e: any) {
+      this.toast.error(e.message ?? 'Could not save skill assessment.');
+    } finally {
+      this.savingSkills.set(false);
+    }
   }
 
   async addComment(studentId: string) {
     if (!this.newComment.trim()) return;
     const user = this.auth.currentUser()!;
-    await this.sts.addComment(studentId, {
-      studentId,
-      coachUid: user.uid, coachName: user.displayName,
-      comment: this.newComment, skills: {},
-      createdAt: new Date() as any,
-    });
-    this.newComment = '';
+    const text = this.newComment;
+    try {
+      await this.sts.addComment(studentId, {
+        studentId,
+        coachUid: user.uid, coachName: user.displayName,
+        comment: text, skills: {},
+        createdAt: new Date() as any,
+      });
+      this.newComment = '';
+    } catch (e: any) {
+      this.toast.error(e.message ?? 'Could not add comment.');
+    }
   }
 
   async addObjective(studentId: string) {
     if (!this.newObjective.trim()) return;
     const user = this.auth.currentUser()!;
-    await this.bs.addObjective(studentId, {
-      studentId, beltId: '', description: this.newObjective,
-      isComplete: false, setBy: user.uid,
-    });
-    this.newObjective = '';
+    const text = this.newObjective;
+    try {
+      await this.bs.addObjective(studentId, {
+        studentId, beltId: '', description: text,
+        isComplete: false, setBy: user.uid,
+      });
+      this.newObjective = '';
+    } catch (e: any) {
+      this.toast.error(e.message ?? 'Could not add objective.');
+    }
   }
 
   async completeObjective(studentId: string, objId: string) {
-    await this.bs.completeObjective(studentId, objId);
+    try {
+      await this.bs.completeObjective(studentId, objId);
+    } catch (e: any) {
+      this.toast.error(e.message ?? 'Could not update objective.');
+    }
   }
 
   async awardBelt(student: Student) {
     if (!this.newBelt.name) return;
     const user = this.auth.currentUser()!;
-    await this.bs.award(student.id, {
-      studentId: student.id, beltId: this.newBelt.color,
-      beltName: this.newBelt.name, awardedBy: user.displayName,
-      awardedAt: new Date() as any, notes: this.newBelt.notes,
-    });
-    this.newBelt = { name: '', color: '#ffd700', notes: '' };
+    const beltName = this.newBelt.name;
+    try {
+      await this.bs.award(student.id, {
+        studentId: student.id, beltId: this.newBelt.color,
+        beltName, awardedBy: user.displayName,
+        awardedAt: new Date() as any, notes: this.newBelt.notes,
+      });
+      this.newBelt = { name: '', color: '#ffd700', notes: '' };
+      this.toast.success(`${student.firstName} awarded ${beltName}!`);
+    } catch (e: any) {
+      this.toast.error(e.message ?? 'Could not award belt.');
+    }
   }
 
   attendanceStats(records: AttendanceRecord[]) {

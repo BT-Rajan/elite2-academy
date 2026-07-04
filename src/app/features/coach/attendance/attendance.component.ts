@@ -7,6 +7,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { SessionService } from '../../../core/services/session.service';
 import { AttendanceService } from '../../../core/services/attendance.service';
 import { StudentService } from '../../../core/services/student.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { ClassSession, AttendanceRecord, Student, AttendanceStatus } from '../../../core/models';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
@@ -156,6 +157,7 @@ export class AttendanceComponent implements OnInit {
   private ss      = inject(SessionService);
   private as_     = inject(AttendanceService);
   private sts     = inject(StudentService);
+  private toast   = inject(ToastService);
 
   sessions$!:  Observable<ClassSession[]>;
   students$!:  Observable<Student[]>;
@@ -197,28 +199,38 @@ export class AttendanceComponent implements OnInit {
     if (!this.newSession.className) { this.formError.set('Class name is required.'); return; }
     this.saving.set(true);
     const user = this.auth.currentUser()!;
-    const session = await this.ss.create({
-      dojoId: user.dojoId, coachUid: user.uid,
-      classId: '', disciplineId: '',
-      className: this.newSession.className,
-      date: new Date(this.newSession.date) as any,
-      startTime: this.newSession.startTime,
-      endTime: this.newSession.endTime,
-      location: this.newSession.location,
-      isClosed: false,
-    });
-    this.statusMap.set({});
-    this.activeSession.set(session);
-    this.showNewForm.set(false);
-    this.saving.set(false);
+    try {
+      const session = await this.ss.create({
+        dojoId: user.dojoId, coachUid: user.uid,
+        classId: '', disciplineId: '',
+        className: this.newSession.className,
+        date: new Date(this.newSession.date) as any,
+        startTime: this.newSession.startTime,
+        endTime: this.newSession.endTime,
+        location: this.newSession.location,
+        isClosed: false,
+      });
+      this.statusMap.set({});
+      this.activeSession.set(session);
+      this.showNewForm.set(false);
+    } catch (e: any) {
+      this.formError.set(e.message ?? 'Could not create session.');
+    } finally {
+      this.saving.set(false);
+    }
   }
 
   async closeSession() {
     const s = this.activeSession();
     if (!s) return;
-    await this.ss.update(String(s.id), { isClosed: true } as any);
-    this.activeSession.set(null);
-    this.statusMap.set({});
+    try {
+      await this.ss.update(String(s.id), { isClosed: true } as any);
+      this.activeSession.set(null);
+      this.statusMap.set({});
+      this.toast.success('Session closed.');
+    } catch (e: any) {
+      this.toast.error(e.message ?? 'Could not close the session.');
+    }
   }
 
   getStatus(studentId: string): AttendanceStatus | null {
@@ -230,12 +242,19 @@ export class AttendanceComponent implements OnInit {
     this.statusMap.set({ ...prev, [student.id]: status });
 
     const user = this.auth.currentUser()!;
-    await this.as_.create({
-      sessionId, studentId: String(student.id), status,
-      markedBy: user.uid, markedAt: new Date() as any,
-    });
-    // Loyalty points are awarded server-side by AttendanceController::markAttendance()
-    // — do not award again here to avoid double-counting.
+    try {
+      await this.as_.create({
+        sessionId, studentId: String(student.id), status,
+        markedBy: user.uid, markedAt: new Date() as any,
+      });
+      // Loyalty points are awarded server-side by AttendanceController::markAttendance()
+      // — do not award again here to avoid double-counting.
+    } catch (e: any) {
+      // Roll back the optimistic UI update -- the backend never recorded
+      // this, so showing it as marked would be lying to the coach.
+      this.statusMap.set(prev);
+      this.toast.error(e.message ?? `Could not mark ${student.firstName} ${status}. Try again.`);
+    }
   }
 
   statusBadgeClass(status: AttendanceStatus | null): string {
