@@ -201,9 +201,9 @@ try {
     $router->patch('/users/{uid}/reject',     fn($uid) => (new GenericController)->rejectUser($uid));
 
     // Dojos
-    $router->get('/dojos/{id}', fn($id) => (new GenericController)->getDojo($id));
-    $router->put('/dojos/{id}', fn($id) => (new GenericController)->updateDojo($id));
-    $router->patch('/dojos/{id}/settings', fn($id) => (new GenericController)->updateDojoSettings($id));
+    $router->get('/dojos/{dojoId}', fn($dojoId) => (new GenericController)->getDojo($dojoId));
+    $router->put('/dojos/{dojoId}', fn($dojoId) => (new GenericController)->updateDojo($dojoId));
+    $router->patch('/dojos/{dojoId}/settings', fn($dojoId) => (new GenericController)->updateDojoSettings($dojoId));
 
     // Health check
     $router->get('/health', fn() => Response::ok(['status' => 'ok', 'time' => date('c')]));
