@@ -101,6 +101,7 @@ try {
     require_once __DIR__.'/../controllers/AttendanceController.php';
     require_once __DIR__.'/../controllers/GenericController.php';
     require_once __DIR__.'/../controllers/BranchController.php';
+    require_once __DIR__.'/../controllers/CommunicationController.php';
 
     $router = new Router();
 
@@ -144,6 +145,34 @@ try {
     $router->get('/branches/{id}/coaches',  fn($id) => (new BranchController)->coaches((int)$id));
     $router->get('/branches/{id}/programs', fn($id) => (new BranchController)->programs((int)$id));
     $router->patch('/users/{uid}/branch', fn($uid) => (new BranchController)->assignUserBranch($uid));
+
+    // ── Communication Layer ───────────────────────────────────────────────────
+    $router->get('/communication/event-types', fn() => (new CommunicationController)->eventTypes());
+
+    $router->get('/communication/templates',        fn() => (new CommunicationController)->listTemplates());
+    $router->post('/communication/templates',        fn() => (new CommunicationController)->createTemplate());
+    $router->post('/communication/templates/import', fn() => (new CommunicationController)->importTemplates());
+    $router->get('/communication/templates/export',  fn() => (new CommunicationController)->exportTemplates());
+    $router->patch('/communication/templates/{id}',  fn($id) => (new CommunicationController)->updateTemplate((int)$id));
+    $router->delete('/communication/templates/{id}', fn($id) => (new CommunicationController)->deactivateTemplate((int)$id));
+
+    $router->post('/communication/send',      fn() => (new CommunicationController)->send());
+    $router->post('/communication/send/bulk', fn() => (new CommunicationController)->sendBulk());
+
+    $router->get('/communication/logs',     fn() => (new CommunicationController)->listLogs());
+    $router->get('/communication/logs/{id}',fn($id) => (new CommunicationController)->getLog((int)$id));
+
+    $router->get('/communication/campaigns',            fn() => (new CommunicationController)->listCampaigns());
+    $router->post('/communication/campaigns',            fn() => (new CommunicationController)->createCampaign());
+    $router->get('/communication/campaigns/{id}',        fn($id) => (new CommunicationController)->getCampaign((int)$id));
+    $router->post('/communication/campaigns/{id}/send',  fn($id) => (new CommunicationController)->sendCampaign((int)$id));
+    $router->delete('/communication/campaigns/{id}',     fn($id) => (new CommunicationController)->deleteCampaign((int)$id));
+
+    $router->post('/communication/otp/send',   fn() => (new CommunicationController)->sendOtp());
+    $router->post('/communication/otp/verify', fn() => (new CommunicationController)->verifyOtp());
+
+    $router->get('/communication/providers',        fn() => (new CommunicationController)->listProviders());
+    $router->patch('/communication/providers/{channel}', fn($channel) => (new CommunicationController)->updateProvider($channel));
 
     // Curriculum roadmap
     $router->get('/disciplines/{id}/roadmap', fn($id) => (new CurriculumController)->roadmap((int)$id));

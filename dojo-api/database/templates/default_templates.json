@@ -1,0 +1,102 @@
+{
+  "templates": [
+    {
+      "eventType": "admission",
+      "channel": "email",
+      "name": "Welcome Email",
+      "subject": "Welcome to {{dojoName}}, {{studentName}}!",
+      "body": "<p>Hi {{parentName}},</p><p>{{studentName}} is officially enrolled at {{dojoName}} in our {{disciplineName}} program, starting from a {{beltName}} belt. We can't wait to see them on the mat!</p><p>See you in class,<br>{{dojoName}}</p>"
+    },
+    {
+      "eventType": "admission",
+      "channel": "whatsapp",
+      "name": "Welcome WhatsApp",
+      "body": "Welcome to {{dojoName}}, {{studentName}}! 🥋 Enrollment is confirmed for our {{disciplineName}} program. See you on the mat!"
+    },
+    {
+      "eventType": "attendance",
+      "channel": "sms",
+      "name": "Absence Notice",
+      "body": "{{dojoName}}: {{studentName}} was marked absent from today's {{className}} class. Reply if this was unexpected."
+    },
+    {
+      "eventType": "attendance",
+      "channel": "whatsapp",
+      "name": "Attendance Confirmation",
+      "body": "Hi {{parentName}}, {{studentName}} attended {{className}} today and earned attendance points. Great job! 🎉"
+    },
+    {
+      "eventType": "evaluation",
+      "channel": "email",
+      "name": "Evaluation Result",
+      "subject": "{{studentName}}'s {{track}} evaluation result",
+      "body": "<p>Hi {{parentName}},</p><p>{{studentName}} was evaluated on {{track}} today with a result of: <strong>{{result}}</strong>.</p><p>Coach notes: {{notes}}</p>"
+    },
+    {
+      "eventType": "promotion",
+      "channel": "whatsapp",
+      "name": "Belt Promotion",
+      "body": "🥋 Congratulations! {{studentName}} has been promoted to {{beltName}} belt at {{dojoName}}! We're proud of this achievement."
+    },
+    {
+      "eventType": "promotion",
+      "channel": "email",
+      "name": "Belt Promotion Certificate",
+      "subject": "{{studentName}} has been promoted to {{beltName}} belt!",
+      "body": "<p>Dear {{parentName}},</p><p>We're thrilled to let you know that {{studentName}} has earned their {{beltName}} belt at {{dojoName}}. This reflects real dedication and hard work.</p><p>Congratulations from all of us!</p>"
+    },
+    {
+      "eventType": "announcement",
+      "channel": "sms",
+      "name": "Schedule Change",
+      "body": "{{dojoName}}: Please note a schedule change — {{message}}"
+    },
+    {
+      "eventType": "announcement",
+      "channel": "email",
+      "name": "General Announcement",
+      "subject": "{{dojoName}} — {{subjectLine}}",
+      "body": "<p>Dear {{parentName}},</p><p>{{message}}</p><p>Thank you,<br>{{dojoName}}</p>"
+    },
+    {
+      "eventType": "otp",
+      "channel": "sms",
+      "name": "OTP Code",
+      "body": "Your {{dojoName}} verification code is {{code}}. It expires in 10 minutes. Do not share this code with anyone."
+    },
+    {
+      "eventType": "email_campaign",
+      "channel": "email",
+      "name": "Seasonal Enrollment Drive",
+      "subject": "New term starting soon at {{dojoName}} 🥋",
+      "body": "<p>Hi {{parentName}},</p><p>Our new term is starting soon — now's a great time to bring a friend along or ask about our advanced programs.</p><p>See you on the mat!</p>"
+    },
+    {
+      "eventType": "newsletter",
+      "channel": "email",
+      "name": "Monthly Newsletter",
+      "subject": "{{dojoName}} Monthly Newsletter",
+      "body": "<p>Hi {{parentName}},</p><p>Here's what's been happening at {{dojoName}} this month — student spotlights, upcoming events, and belt promotions.</p>"
+    },
+    {
+      "eventType": "marketing_promo",
+      "channel": "email",
+      "name": "Referral Discount",
+      "subject": "Refer a friend, get a month free at {{dojoName}}",
+      "body": "<p>Hi {{parentName}},</p><p>Refer a friend to {{dojoName}} and you'll both get a discount on next month's fees. Ask us for details!</p>"
+    },
+    {
+      "eventType": "marketing_promo",
+      "channel": "whatsapp",
+      "name": "Flash Promo",
+      "body": "🎉 Limited time at {{dojoName}}: {{message}} Reply to claim before it ends!"
+    },
+    {
+      "eventType": "report",
+      "channel": "email",
+      "name": "Progress Report",
+      "subject": "{{studentName}}'s progress report",
+      "body": "<p>Hi {{parentName}},</p><p>Attached is {{studentName}}'s latest progress report from {{dojoName}}, covering attendance, evaluations, and belt progress.</p>"
+    }
+  ]
+}

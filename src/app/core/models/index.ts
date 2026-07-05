@@ -18,6 +18,7 @@ export interface UserProfile {
   isHeadCoach?: boolean;   // coaches only — can overrule evaluations & promotions
   avatarUrl?: string;
   dojoId: string;
+  branchId?: string;       // home branch for coach/staff; unset for admin (dojo-wide access)
   createdAt: Date;
 }
 
@@ -43,6 +44,7 @@ export interface Dojo {
 export interface Student {
   id: string;
   dojoId: string;
+  branchId: string;
   parentUid: string;
   firstName: string;
   lastName: string;
@@ -282,4 +284,115 @@ export interface StudentObjective {
   isComplete: boolean;
   completedAt?: Date;
   setBy: string;   // coach uid
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Branches (multi-location support)
+// ─────────────────────────────────────────────────────────────────────────────
+export interface Branch {
+  id: string;
+  dojoId: string;
+  name: string;
+  code?: string;
+  address?: string;
+  phone?: string;
+  isActive: boolean;
+  createdAt: Date;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Communication Layer — WhatsApp / SMS / Email integration
+// ─────────────────────────────────────────────────────────────────────────────
+export type CommEventType =
+  | 'admission' | 'attendance' | 'evaluation' | 'promotion' | 'announcement'
+  | 'otp' | 'email_campaign' | 'newsletter' | 'marketing_promo' | 'parent_engagement' | 'report';
+
+export type CommChannel = 'whatsapp' | 'sms' | 'email' | 'chat';
+
+export interface CommEventCatalogEntry {
+  value: CommEventType;
+  label: string;
+  channels: CommChannel[];
+}
+
+export interface CommTemplate {
+  id: string;
+  dojoId: string;
+  eventType: CommEventType;
+  channel: CommChannel;
+  name: string;
+  subject?: string;
+  body: string;
+  variables: string[];
+  isActive: boolean;
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type CommLogStatus = 'queued' | 'sent' | 'failed';
+export type CommRecipientType = 'student' | 'parent' | 'user' | 'custom';
+
+export interface CommLog {
+  id: string;
+  dojoId: string;
+  branchId?: string;
+  eventType: CommEventType;
+  channel: CommChannel;
+  templateId?: string;
+  campaignId?: string;
+  recipientType: CommRecipientType;
+  recipientRef?: string;
+  recipientName?: string;
+  recipientAddress: string;
+  subject?: string;
+  body: string;
+  status: CommLogStatus;
+  provider?: string;
+  providerMessageId?: string;
+  error?: string;
+  sentBy: string;
+  sentAt?: Date;
+  createdAt: Date;
+}
+
+export type CommCampaignType = 'email_campaign' | 'newsletter' | 'marketing_promo';
+export type CommCampaignStatus = 'draft' | 'sending' | 'sent' | 'failed';
+
+export interface CommCampaignRecipient {
+  id: string;
+  campaignId: string;
+  parentUid?: string;
+  recipientName?: string;
+  recipientAddress: string;
+  status: 'pending' | 'sent' | 'failed';
+  error?: string;
+  sentAt?: Date;
+}
+
+export interface CommCampaign {
+  id: string;
+  dojoId: string;
+  branchId?: string;
+  type: CommCampaignType;
+  channel: 'email' | 'whatsapp';
+  templateId: string;
+  name: string;
+  audienceFilter: { role?: string; branchId?: number; disciplineId?: number };
+  status: CommCampaignStatus;
+  totalRecipients: number;
+  sentCount: number;
+  failedCount: number;
+  createdBy: string;
+  createdAt: Date;
+  sentAt?: Date;
+  recipients?: CommCampaignRecipient[];
+}
+
+export interface CommProviderConfig {
+  channel: 'whatsapp' | 'sms' | 'email';
+  provider: string;
+  config: Record<string, string>;
+  isActive: boolean;
+  available: string[];
 }

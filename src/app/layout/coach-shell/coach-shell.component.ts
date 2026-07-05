@@ -10,6 +10,7 @@ const NAV: { path: string; icon: IconName; label: string; badge?: number }[] = [
   { path: '/coach/attendance', icon: 'check',  label: 'Attendance' },
   { path: '/coach/students',   icon: 'child', label: 'My Students' },
   { path: '/coach/messages',   icon: 'message', label: 'Messages' },
+  { path: '/coach/communication', icon: 'phone', label: 'Communication' },
   { path: '/coach/profile',    icon: 'user', label: 'My Profile' },
 ];
 

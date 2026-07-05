@@ -16,8 +16,8 @@ class Response {
     public static function created(mixed $data = null): never {
         self::json(['data' => self::camelize($data)], 201);
     }
-    public static function error(string $msg, int $status = 400): never {
-        self::json(['error' => true, 'message' => $msg], $status);
+    public static function error(string $msg, int $status = 400, array $extra = []): never {
+        self::json(array_merge(['error' => true, 'message' => $msg], self::camelize($extra)), $status);
     }
     public static function unauthorized(?string $msg = null): never {
         self::error($msg ?? ErrorMessages::get('auth.token_required'), 401);

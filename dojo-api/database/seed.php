@@ -355,4 +355,87 @@ addNotification($db, $parent3Uid, 'system',     'Evaluation update for Noah', 'N
 addNotification($db, $parent3Uid, 'system',     'Evaluation overruled', 'A Head Coach reviewed and updated one of Noah\'s evaluations.', false, 5);
 
 echo "Seeded full test dataset for dojo '$dojoId'.\n\n";
+
+// ── Communication Layer ──────────────────────────────────────────────────────
+// Templates are imported from the same JSON shape POST
+// /communication/templates/import accepts -- this file IS the "upload
+// templates in JSON format" flow, just run at seed time instead of through
+// the API. Real uploads go through CommunicationController::importTemplates(),
+// which does the identical validate-then-upsert.
+function importTemplatesFromFile(PDO $db, string $dojoId, string $createdBy, string $path): array {
+    require_once __DIR__ . '/../core/comms/CommEventCatalog.php';
+    require_once __DIR__ . '/../core/comms/TemplateRenderer.php';
+    $payload = json_decode(file_get_contents($path), true);
+    $ids = [];
+    foreach ($payload['templates'] as $t) {
+        if (!CommEventCatalog::isChannelAllowed($t['eventType'], $t['channel'])) {
+            throw new RuntimeException("Seed template '{$t['name']}' uses a channel not allowed for {$t['eventType']}.");
+        }
+        $variables = array_values(array_unique(array_merge(
+            TemplateRenderer::extractPlaceholders($t['body']),
+            isset($t['subject']) ? TemplateRenderer::extractPlaceholders($t['subject']) : []
+        )));
+        $db->prepare("
+            INSERT INTO communication_templates (dojo_id, event_type, channel, name, subject, body, variables, created_by)
+            VALUES (?,?,?,?,?,?,?,?)")
+            ->execute([$dojoId, $t['eventType'], $t['channel'], $t['name'], $t['subject'] ?? null, $t['body'], json_encode($variables), $createdBy]);
+        $ids[$t['eventType'] . ':' . $t['channel'] . ':' . $t['name']] = (int)$db->lastInsertId();
+    }
+    return $ids;
+}
+$tplIds = importTemplatesFromFile($db, $dojoId, $adminUid, __DIR__ . '/templates/default_templates.json');
+
+// Every channel defaults to a safe driver -- 'log' for WhatsApp/SMS (no
+// credentials needed to demo the full flow), 'smtp' for email (uses PHP's
+// native mail(), works out of the box). Swap to 'twilio'/'whatsapp_cloud'
+// any time via PATCH /communication/providers/:channel.
+foreach (['whatsapp' => 'log', 'sms' => 'log', 'email' => 'smtp'] as $channel => $provider) {
+    $db->prepare("INSERT INTO communication_provider_configs (dojo_id, channel, provider) VALUES (?,?,?)")
+        ->execute([$dojoId, $channel, $provider]);
+}
+
+// A handful of historical sends so the Communication Center's History tab
+// isn't empty on first login.
+function logComm(PDO $db, string $dojoId, ?int $branchId, string $eventType, string $channel, ?int $templateId,
+                  string $recipientType, ?string $recipientRef, string $recipientName, string $recipientAddress,
+                  ?string $subject, string $body, string $sentBy, int $daysAgo): void {
+    $db->prepare("
+        INSERT INTO communication_logs
+            (dojo_id, branch_id, event_type, channel, template_id, recipient_type, recipient_ref,
+             recipient_name, recipient_address, subject, body, status, provider, sent_by, sent_at, created_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,'sent',?,?,?,?)")
+        ->execute([$dojoId, $branchId, $eventType, $channel, $templateId, $recipientType, $recipientRef,
+                    $recipientName, $recipientAddress, $subject, $body,
+                    $channel === 'email' ? 'smtp' : 'log', $sentBy, daysAgo($daysAgo), daysAgo($daysAgo)]);
+}
+logComm($db, $dojoId, $downtownBranchId, 'admission', 'email',
+    $tplIds['admission:email:Welcome Email'], 'parent', (string)$sofiaId, 'Maria Lopez', 'parent1@elita.test',
+    'Welcome to Elita Academy, Sofia!', 'Hi Maria, Sofia is officially enrolled...', $staffUid, 20);
+logComm($db, $dojoId, $downtownBranchId, 'promotion', 'whatsapp',
+    $tplIds['promotion:whatsapp:Belt Promotion'], 'student', (string)$ethanId, 'James Carter', '+1-555-0102',
+    null, "🥋 Congratulations! Ethan has been promoted...", $headCoachUid, 15);
+logComm($db, $dojoId, $downtownBranchId, 'attendance', 'sms',
+    $tplIds['attendance:sms:Absence Notice'], 'student', (string)$liamId, 'Maria Lopez', '+1-555-0101',
+    null, 'Elita Academy: Liam was marked absent from today\'s class.', $coachUid, 6);
+logComm($db, $dojoId, $riverBranchId, 'evaluation', 'email',
+    $tplIds['evaluation:email:Evaluation Result'], 'student', (string)$noahId, 'Aisha Khan', 'parent3@elita.test',
+    "Noah's grappling evaluation result", 'Hi Aisha, Noah was evaluated on grappling today...', $riverCoachUid, 22);
+
+// A sent Newsletter campaign, to demo the Campaigns tab beyond a blank slate.
+$newsletterTplId = $tplIds['newsletter:email:Monthly Newsletter'];
+$db->prepare("
+    INSERT INTO communication_campaigns (dojo_id, branch_id, type, channel, template_id, name, audience_filter, status, total_recipients, sent_count, created_by, sent_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)")
+    ->execute([$dojoId, null, 'newsletter', 'email', $newsletterTplId, 'July Newsletter', json_encode(['role' => 'parent']), 'sent', 3, 3, $staffUid, daysAgo(4)]);
+$newsletterCampaignId = (int)$db->lastInsertId();
+foreach ([[$parent1Uid, 'Maria Lopez', 'parent1@elita.test'], [$parent2Uid, 'James Carter', 'parent2@elita.test'], [$parent3Uid, 'Aisha Khan', 'parent3@elita.test']] as [$uid, $name, $email]) {
+    $db->prepare("
+        INSERT INTO communication_campaign_recipients (campaign_id, parent_uid, recipient_name, recipient_address, status, sent_at)
+        VALUES (?,?,?,?,'sent',?)")
+        ->execute([$newsletterCampaignId, $uid, $name, $email, daysAgo(4)]);
+}
+
+echo "Communication Layer: imported " . count($tplIds) . " templates, seeded provider configs (log/log/smtp),\n";
+echo "4 sample History entries, and 1 sent Newsletter campaign.\n\n";
+
 printLogins();

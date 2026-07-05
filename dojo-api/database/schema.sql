@@ -97,6 +97,147 @@ CREATE TABLE IF NOT EXISTS branches (
   INDEX idx_dojo (dojo_id, is_active)
 ) ENGINE=InnoDB;
 
+-- ── Communication Layer ──────────────────────────────────────────────────────
+-- Every message the platform sends -- whichever "event" triggers it
+-- (admission, attendance, evaluation, promotion, announcements, OTP, email
+-- campaigns, newsletters, marketing promos, reports) and whichever external
+-- channel carries it (WhatsApp, SMS, Email) -- goes through this layer.
+-- "Parent engagement" is deliberately NOT here: per spec it's in-app chat
+-- only, which is the existing threads/messages feature, not an external
+-- channel. It's still registered in CommEventCatalog (see core/comms/) so it
+-- shows up consistently in template/event listings, but nothing in this
+-- layer sends to it.
+--
+-- Event <-> channel restrictions (enforced in CommEventCatalog::channelsFor,
+-- not by the schema) are:
+--   admission, attendance, evaluation, promotion, announcement, report
+--                                            -> whatsapp, sms, or email
+--   otp                                      -> sms only
+--   email_campaign, newsletter                -> email only
+--   marketing_promo                           -> email or whatsapp
+--   parent_engagement                         -> in-app chat only (no row here)
+CREATE TABLE IF NOT EXISTS communication_templates (
+  id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  dojo_id    VARCHAR(50) NOT NULL,
+  event_type ENUM('admission','attendance','evaluation','promotion','announcement',
+                   'otp','email_campaign','newsletter','marketing_promo',
+                   'parent_engagement','report') NOT NULL,
+  channel    ENUM('whatsapp','sms','email','chat') NOT NULL,
+  name       VARCHAR(120) NOT NULL,
+  subject    VARCHAR(200),                 -- email only
+  body       TEXT NOT NULL,                -- {{placeholder}} tokens, see TemplateRenderer
+  variables  JSON,                         -- array of placeholder names, for UI hinting
+  is_active  TINYINT(1) NOT NULL DEFAULT 1,
+  created_by VARCHAR(36) NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_dojo_event (dojo_id, event_type, channel, is_active)
+) ENGINE=InnoDB;
+
+-- One row per (dojo, external channel) -- which provider drives that channel
+-- and its credentials. Defaults to the 'log' provider (see core/comms/) which
+-- never actually calls out anywhere, just records what *would* have been
+-- sent -- safe out of the box until an admin configures real credentials.
+-- `config` holds provider-specific fields (e.g. Twilio account_sid/auth_token
+-- /from_number, or WhatsApp Cloud's phone_number_id/access_token) and is
+-- masked in API responses; see BranchController-style secrecy handling in
+-- CommunicationController::providers().
+CREATE TABLE IF NOT EXISTS communication_provider_configs (
+  id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  dojo_id    VARCHAR(50) NOT NULL,
+  channel    ENUM('whatsapp','sms','email') NOT NULL,
+  provider   VARCHAR(40) NOT NULL DEFAULT 'log',
+  config     JSON,
+  is_active  TINYINT(1) NOT NULL DEFAULT 1,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_dojo_channel (dojo_id, channel)
+) ENGINE=InnoDB;
+
+-- Every send attempt, one row per recipient, whether a one-off send or part
+-- of a campaign -- the audit trail staff/admin see in the Communication
+-- Center's History tab.
+CREATE TABLE IF NOT EXISTS communication_logs (
+  id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  dojo_id             VARCHAR(50) NOT NULL,
+  branch_id           INT UNSIGNED NULL,
+  event_type          ENUM('admission','attendance','evaluation','promotion','announcement',
+                            'otp','email_campaign','newsletter','marketing_promo',
+                            'parent_engagement','report') NOT NULL,
+  channel             ENUM('whatsapp','sms','email','chat') NOT NULL,
+  template_id         INT UNSIGNED NULL,
+  campaign_id         INT UNSIGNED NULL,
+  recipient_type      ENUM('student','parent','user','custom') NOT NULL,
+  recipient_ref       VARCHAR(64),          -- loosely-typed: a student id or a user uid
+  recipient_name      VARCHAR(120),
+  recipient_address   VARCHAR(190) NOT NULL, -- phone or email actually dialed/sent to
+  subject             VARCHAR(200),
+  body                TEXT NOT NULL,         -- fully-rendered message actually sent
+  status              ENUM('queued','sent','failed') NOT NULL DEFAULT 'queued',
+  provider            VARCHAR(40),
+  provider_message_id VARCHAR(120),
+  error               TEXT,
+  sent_by             VARCHAR(36) NOT NULL,
+  sent_at             DATETIME NULL,
+  created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (branch_id)   REFERENCES branches(id)                 ON DELETE SET NULL,
+  FOREIGN KEY (template_id) REFERENCES communication_templates(id)  ON DELETE SET NULL,
+  INDEX idx_dojo_created (dojo_id, created_at),
+  INDEX idx_event_channel (dojo_id, event_type, channel)
+) ENGINE=InnoDB;
+
+-- Bulk sends: Email Campaigns, Newsletters, and (email/whatsapp) marketing
+-- Promotions all reuse this one table, distinguished by `type`; `channel`
+-- must be email for the first two (validated in the app, not the schema)
+-- since those two events are email-only per the catalog.
+CREATE TABLE IF NOT EXISTS communication_campaigns (
+  id                INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  dojo_id           VARCHAR(50) NOT NULL,
+  branch_id         INT UNSIGNED NULL,
+  type              ENUM('email_campaign','newsletter','marketing_promo') NOT NULL,
+  channel           ENUM('email','whatsapp') NOT NULL,
+  template_id       INT UNSIGNED NOT NULL,
+  name              VARCHAR(150) NOT NULL,
+  audience_filter   JSON,             -- e.g. {"role":"parent","branchId":2,"disciplineId":1}
+  status            ENUM('draft','sending','sent','failed') NOT NULL DEFAULT 'draft',
+  total_recipients  INT UNSIGNED NOT NULL DEFAULT 0,
+  sent_count        INT UNSIGNED NOT NULL DEFAULT 0,
+  failed_count      INT UNSIGNED NOT NULL DEFAULT 0,
+  created_by        VARCHAR(36) NOT NULL,
+  created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  sent_at           DATETIME NULL,
+  FOREIGN KEY (branch_id)   REFERENCES branches(id)                ON DELETE SET NULL,
+  FOREIGN KEY (template_id) REFERENCES communication_templates(id) ON DELETE RESTRICT,
+  INDEX idx_dojo (dojo_id, status)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS communication_campaign_recipients (
+  id                INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  campaign_id       INT UNSIGNED NOT NULL,
+  parent_uid        VARCHAR(36),
+  recipient_name    VARCHAR(120),
+  recipient_address VARCHAR(190) NOT NULL,
+  status            ENUM('pending','sent','failed') NOT NULL DEFAULT 'pending',
+  error             TEXT,
+  sent_at           DATETIME NULL,
+  FOREIGN KEY (campaign_id) REFERENCES communication_campaigns(id) ON DELETE CASCADE,
+  INDEX idx_campaign (campaign_id, status)
+) ENGINE=InnoDB;
+
+-- OTP (SMS only, per spec). Codes are stored hashed, short-lived, and
+-- attempt-limited, mirroring password_resets' security posture below.
+CREATE TABLE IF NOT EXISTS otp_codes (
+  id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  dojo_id     VARCHAR(50) NOT NULL,
+  phone       VARCHAR(30) NOT NULL,
+  purpose     VARCHAR(40) NOT NULL DEFAULT 'verify_phone',
+  code_hash   VARCHAR(255) NOT NULL,
+  attempts    TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  expires_at  DATETIME NOT NULL,
+  consumed_at DATETIME NULL,
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_phone (dojo_id, phone, purpose)
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS disciplines (
   id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   dojo_id     VARCHAR(50) NOT NULL,
