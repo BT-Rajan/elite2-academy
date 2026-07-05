@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { Observable, interval } from 'rxjs';
-import { switchMap, startWith, map, distinctUntilChanged } from 'rxjs/operators';
+import { Observable, interval, of } from 'rxjs';
+import { switchMap, startWith, map, distinctUntilChanged, catchError } from 'rxjs/operators';
 import { BaseHttpService } from './base-http.service';
 import { Notification } from '../models';
 
@@ -14,7 +14,7 @@ export class NotificationService extends BaseHttpService<Notification> {
       startWith(0),
       switchMap(() =>
         this.api.get<{ data: Notification[] }>('/notifications', { uid })
-          .pipe(map(r => r.data))
+          .pipe(map(r => r.data), catchError(() => of([] as Notification[])))
       ),
       distinctUntilChanged((a, b) => a.length === b.length &&
         a[0]?.id === b[0]?.id)

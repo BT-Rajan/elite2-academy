@@ -37,19 +37,7 @@ import { IconComponent } from '../../../shared/components/icon/icon.component';
         </div>
       </div>
     </div>
-  `,
-  styles: [`
-    .auth-page   { min-height:100vh; display:flex; align-items:center; justify-content:center;
-                   background:var(--bg); padding:24px; }
-    .auth-card   { width:100%; max-width:380px; background:var(--surface);
-                   border:1px solid var(--border); border-radius:var(--radius-lg); padding:36px; }
-    .auth-logo   { font-size:40px; text-align:center; margin-bottom:12px; }
-    .auth-title  { font-size:22px; font-weight:700; text-align:center; margin-bottom:4px; }
-    .auth-sub    { font-size:14px; color:var(--text-muted); text-align:center; margin-bottom:28px; }
-    .auth-links  { display:flex; justify-content:space-between; margin-top:16px;
-                   font-size:13px; color:var(--text-muted); }
-    .form-error  { color:var(--danger); font-size:13px; margin-bottom:12px; }
-  `]
+  `
 })
 export class LoginComponent {
   private auth = inject(AuthService);

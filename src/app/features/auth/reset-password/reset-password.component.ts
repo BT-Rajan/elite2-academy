@@ -11,7 +11,7 @@ import { IconComponent } from '../../../shared/components/icon/icon.component';
   imports: [CommonModule, FormsModule, RouterLink, IconComponent],
   template: `
     <div class="auth-page">
-      <div class="auth-card">
+      <div class="auth-card auth-card--sm">
         <div class="auth-logo"><dojo-icon name="key" [size]="28"></dojo-icon></div>
         <h1 class="auth-title">Reset Password</h1>
         <p class="auth-sub">We'll send you a reset link</p>
@@ -34,17 +34,7 @@ import { IconComponent } from '../../../shared/components/icon/icon.component';
         </div>
       </div>
     </div>
-  `,
-  styles: [`
-    .auth-page { min-height:100vh; display:flex; align-items:center; justify-content:center;
-                 background:var(--bg); padding:24px; }
-    .auth-card { width:100%; max-width:360px; background:var(--surface);
-                 border:1px solid var(--border); border-radius:var(--radius-lg); padding:36px; }
-    .auth-logo { font-size:40px; text-align:center; margin-bottom:12px; }
-    .auth-title{ font-size:22px; font-weight:700; text-align:center; margin-bottom:4px; }
-    .auth-sub  { font-size:14px; color:var(--text-muted); text-align:center; margin-bottom:28px; }
-    .form-error{ color:var(--danger); font-size:13px; margin-bottom:12px; }
-  `]
+  `
 })
 export class ResetPasswordComponent {
   private auth = inject(AuthService);

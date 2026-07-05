@@ -27,6 +27,6 @@ export class AvatarComponent {
   @Input() name = '';
   @Input() src?: string;
   @Input() size: 'xs'|'sm'|'md'|'lg'|'xl' = 'md';
-  @Input() bg = '#3b82f6';
+  @Input() bg = 'var(--info)';
   initials = initials;
 }

@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, interval } from 'rxjs';
-import { switchMap, startWith, distinctUntilChanged, map } from 'rxjs/operators';
+import { Observable, interval, of } from 'rxjs';
+import { switchMap, startWith, distinctUntilChanged, map, catchError } from 'rxjs/operators';
 import { BaseHttpService } from './base-http.service';
 import { MessageThread, Message } from '../models';
 import { ApiService } from './api.service';
@@ -23,7 +23,7 @@ export class MessageService extends BaseHttpService<MessageThread> {
       startWith(0),
       switchMap(() =>
         this.api.get<{ data: Message[] }>(`/threads/${threadId}/messages`)
-          .pipe(map(r => r.data))
+          .pipe(map(r => r.data), catchError(() => of([] as Message[])))
       ),
       distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b))
     );

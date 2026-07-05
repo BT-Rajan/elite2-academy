@@ -1,8 +1,8 @@
 import { Routes } from '@angular/router';
-import { authGuard, roleGuard } from './core/guards/auth.guard';
+import { roleGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
-  { path: '', redirectTo: 'auth/login', pathMatch: 'full' },
+  { path: '', redirectTo: 'public', pathMatch: 'full' },
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   {
@@ -97,9 +97,6 @@ export const routes: Routes = [
       { path: 'pricing',  loadComponent: () => import('./features/public/pricing/pricing.component').then(m => m.PricingComponent) },
     ]
   },
-
-  // Redirect bare root to public home
-  { path: '', redirectTo: 'public', pathMatch: 'full' },
 
   { path: '**', redirectTo: 'auth/login' }
 ];

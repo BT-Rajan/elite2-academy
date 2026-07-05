@@ -3,6 +3,7 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { MessageService } from '../../core/services/message.service';
 import { AvatarComponent } from '../../shared/components/avatar/avatar.component';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 
@@ -68,6 +69,7 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
 export class ParentShellComponent implements OnInit {
   auth = inject(AuthService);
   private ns = inject(NotificationService);
+  private ms = inject(MessageService);
 
   user           = computed(() => this.auth.currentUser());
   unreadNotifs   = signal(0);
@@ -78,6 +80,9 @@ export class ParentShellComponent implements OnInit {
     if (!uid) return;
     this.ns.forUser$(uid).subscribe(notifs => {
       this.unreadNotifs.set(notifs.filter(n => !n.isRead).length);
+    });
+    this.ms.threadsForParent$(uid).subscribe(threads => {
+      this.unreadMessages.set(threads.reduce((sum, t) => sum + (t.unreadParent ?? 0), 0));
     });
   }
 }
