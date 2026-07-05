@@ -21,6 +21,14 @@ export interface UserProfile {
   createdAt: Date;
 }
 
+export interface PendingUser {
+  uid: string;
+  email: string;
+  displayName: string;
+  role: UserRole;
+  createdAt: Date;
+}
+
 export interface Dojo {
   id: string;
   name: string;

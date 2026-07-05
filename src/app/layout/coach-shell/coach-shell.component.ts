@@ -22,7 +22,7 @@ const NAV: { path: string; icon: IconName; label: string; badge?: number }[] = [
       <aside class="sidebar">
         <div class="sidebar__logo"><dojo-icon name="belt" [size]="20"></dojo-icon> <span>Coach Portal</span></div>
         <nav class="sidebar__nav">
-          <a *ngFor="let item of nav"
+          <a *ngFor="let item of nav()"
              [routerLink]="item.path"
              routerLinkActive="active"
              class="nav-item">
@@ -55,5 +55,10 @@ const NAV: { path: string; icon: IconName; label: string; badge?: number }[] = [
 export class CoachShellComponent {
   auth = inject(AuthService);
   user = computed(() => this.auth.currentUser());
-  nav  = NAV;
+  // Only Head Coaches can approve pending admin sign-ups (see
+  // AuthMiddleware::requireHeadCoach on the backend) -- regular coaches
+  // don't get the nav item since the page would just 403 for them.
+  nav  = computed(() => this.user()?.isHeadCoach
+    ? [...NAV.slice(0, -1), { path: '/coach/approvals', icon: 'check-circle' as IconName, label: 'Approvals' }, NAV[NAV.length - 1]]
+    : NAV);
 }
