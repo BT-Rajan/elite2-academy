@@ -334,6 +334,11 @@ class GenericController {
     }
 
     // PATCH /users/:uid/head-coach — admin promotes/demotes a coach to Head Coach.
+    // Bumps token_version so the change takes effect immediately, same as a
+    // password change or force-revoke -- without this, a demoted Head Coach's
+    // existing token still carries isHeadCoach:true (it's baked into the JWT
+    // at login and never re-checked against the DB mid-session) and would
+    // keep passing every requireHeadCoach() check until it naturally expires.
     public function setHeadCoach(string $uid): never {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireRole($auth, 'admin');
@@ -343,7 +348,7 @@ class GenericController {
         $row = $stmt->fetch();
         if (!$row) Response::notFound('User not found.');
         if ($row['role'] !== 'coach') Response::error('Only coaches can be designated Head Coach.', 422);
-        $this->db->prepare("UPDATE users SET is_head_coach = ? WHERE uid = ?")
+        $this->db->prepare("UPDATE users SET is_head_coach = ?, token_version = token_version + 1 WHERE uid = ?")
             ->execute([!empty($b['isHeadCoach']) ? 1 : 0, $uid]);
         Audit::log($this->db, $auth, 'user.head_coach', 'user', $uid, ['isHeadCoach' => !empty($b['isHeadCoach'])]);
         Response::ok(['updated' => true]);
@@ -374,10 +379,13 @@ class GenericController {
         AuthMiddleware::requireRole($auth, 'admin', 'staff', 'coach');
         if ($auth['role'] === 'coach' && empty($auth['isHeadCoach'])) Response::forbidden();
         $stmt = $this->db->prepare("
-            SELECT uid, email, display_name, role, approval_status, is_active,
-                   is_head_coach, approved_by, approved_at, created_at
-            FROM users WHERE dojo_id = ?
-            ORDER BY created_at DESC");
+            SELECT u.uid, u.email, u.display_name, u.role, u.approval_status, u.is_active,
+                   u.is_head_coach, u.approved_by, approver.display_name AS approved_by_name,
+                   u.approved_at, u.created_at
+            FROM users u
+            LEFT JOIN users approver ON approver.uid = u.approved_by
+            WHERE u.dojo_id = ?
+            ORDER BY u.created_at DESC");
         $stmt->execute([Tenant::dojoId($auth)]);
         Response::ok($stmt->fetchAll());
     }
@@ -453,10 +461,13 @@ class GenericController {
         AuthMiddleware::requireHeadCoach($auth);
         if ($uid === $auth['uid']) Response::error('You cannot block your own account.', 422);
 
-        $stmt = $this->db->prepare("SELECT role, is_active, is_head_coach FROM users WHERE uid = ? AND dojo_id = ?");
+        $stmt = $this->db->prepare("SELECT role, approval_status, is_active, is_head_coach FROM users WHERE uid = ? AND dojo_id = ?");
         $stmt->execute([$uid, Tenant::dojoId($auth)]);
         $target = $stmt->fetch();
         if (!$target) Response::notFound('User not found.');
+        if ($target['approval_status'] !== 'approved') {
+            Response::error('Only an approved account can be blocked.', 422);
+        }
         if ($target['is_head_coach']) Response::forbidden('A Head Coach account cannot be blocked.');
         if (!$target['is_active']) Response::error('User is already blocked.', 422);
 
@@ -470,10 +481,13 @@ class GenericController {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireHeadCoach($auth);
 
-        $stmt = $this->db->prepare("SELECT role, is_active FROM users WHERE uid = ? AND dojo_id = ?");
+        $stmt = $this->db->prepare("SELECT role, approval_status, is_active FROM users WHERE uid = ? AND dojo_id = ?");
         $stmt->execute([$uid, Tenant::dojoId($auth)]);
         $target = $stmt->fetch();
         if (!$target) Response::notFound('User not found.');
+        if ($target['approval_status'] !== 'approved') {
+            Response::error('Only an approved account can be unblocked.', 422);
+        }
         if ($target['is_active']) Response::error('User is not blocked.', 422);
 
         $this->db->prepare("UPDATE users SET is_active = 1 WHERE uid = ?")->execute([$uid]);
@@ -490,11 +504,14 @@ class GenericController {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireHeadCoach($auth);
 
-        $stmt = $this->db->prepare("SELECT role, is_head_coach FROM users WHERE uid = ? AND dojo_id = ?");
+        $stmt = $this->db->prepare("SELECT role, approval_status, is_head_coach FROM users WHERE uid = ? AND dojo_id = ?");
         $stmt->execute([$uid, Tenant::dojoId($auth)]);
         $target = $stmt->fetch();
         if (!$target) Response::notFound('User not found.');
         if ($target['role'] !== 'coach') Response::error('Only a coach can be downgraded to staff.', 422);
+        if ($target['approval_status'] !== 'approved') {
+            Response::error('Only an approved coach can be downgraded to staff.', 422);
+        }
         if ($target['is_head_coach']) Response::forbidden('A Head Coach account cannot be downgraded.');
 
         $this->db->prepare("UPDATE users SET role = 'staff', is_head_coach = 0 WHERE uid = ?")

@@ -53,6 +53,7 @@ type Tab = 'pending' | 'history';
               <th>Role</th>
               <th>Status</th>
               <th>{{ tab() === 'pending' ? 'Requested' : 'Created' }}</th>
+              <th *ngIf="tab() === 'history'">Decided by</th>
               <th></th>
             </tr>
           </thead>
@@ -74,6 +75,12 @@ type Tab = 'pending' | 'history';
                 </span>
               </td>
               <td class="text-muted" [title]="u.createdAt | date:'medium'">{{ u.createdAt | timeAgo }}</td>
+              <td class="text-muted" *ngIf="tab() === 'history'">
+                <ng-container *ngIf="u.approvedByName; else noDecision">
+                  {{ u.approvedByName }} <span [title]="u.approvedAt | date:'medium'">· {{ u.approvedAt | timeAgo }}</span>
+                </ng-container>
+                <ng-template #noDecision>—</ng-template>
+              </td>
               <td style="text-align:right;white-space:nowrap">
                 <ng-container [ngSwitch]="true">
                   <ng-container *ngSwitchCase="u.approvalStatus === 'pending'">
@@ -99,7 +106,7 @@ type Tab = 'pending' | 'history';
                   </ng-container>
 
                   <ng-container *ngSwitchDefault>
-                    <ng-container *ngIf="canManage(u); else noPermission">
+                    <ng-container *ngIf="canManage(); else noPermission">
                       <button *ngIf="u.role === 'coach' && !u.isHeadCoach"
                               class="btn btn--secondary btn--sm" [disabled]="busy() === u.uid"
                               (click)="downgrade(u)">
@@ -214,7 +221,7 @@ export class PendingApprovalsComponent implements OnInit {
   // approve/reject, which staff can also do (see GenericController::blockUser
   // / unblockUser / downgradeCoachToStaff). Head Coach can act on anyone,
   // including an Admin account.
-  canManage(u: AccountRecord): boolean {
+  canManage(): boolean {
     const user = this.auth.currentUser();
     if (!user) return false;
     if (user.role === 'admin') return true;
@@ -223,10 +230,11 @@ export class PendingApprovalsComponent implements OnInit {
   }
 
   async approve(u: AccountRecord) {
+    const wasRejected = u.approvalStatus === 'rejected';
     this.busy.set(u.uid);
     try {
       await this.us.approve(u.uid);
-      this.toast.success(`${u.displayName} approved.`);
+      this.toast.success(wasRejected ? `${u.displayName} reinstated.` : `${u.displayName} approved.`);
       this.load();
     } catch (e: any) {
       this.toast.error(e.message ?? 'Could not approve this account.');

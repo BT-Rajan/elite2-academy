@@ -28,13 +28,14 @@ export const approvalsGuard: CanActivateFn = () => {
   const auth   = inject(AuthService);
   const router = inject(Router);
   const user   = auth.currentUser();
-  const allowed = !!user && (
-    user.role === 'admin' || user.role === 'staff' ||
-    (user.role === 'coach' && !!user.isHeadCoach)
-  );
+  if (!user) return router.createUrlTree(['/auth/login']);
+
+  const allowed = user.role === 'admin' || user.role === 'staff' ||
+    (user.role === 'coach' && !!user.isHeadCoach);
   if (allowed) return true;
+
   return router.createUrlTree([{
     admin: '/admin/dashboard', staff: '/staff/dashboard',
     coach: '/coach/dashboard', parent: '/parent/dashboard',
-  }[user?.role ?? 'coach'] ?? '/auth/login']);
+  }[user.role] ?? '/auth/login']);
 };

@@ -32,6 +32,7 @@ export interface AccountRecord {
   isActive?: boolean;
   isHeadCoach?: boolean;
   approvedAt?: Date | null;
+  approvedByName?: string | null;
 }
 
 /** @deprecated use AccountRecord */
