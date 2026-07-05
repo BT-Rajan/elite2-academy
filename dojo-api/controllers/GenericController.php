@@ -439,8 +439,8 @@ class GenericController {
     // every request, so this takes effect immediately (their current token
     // stops working on their very next request, no separate session store
     // needed). Head Coach or Admin only -- more consequential than a routine
-    // approve/reject, so staff isn't given this one. Can't block yourself
-    // or another admin unless you are one.
+    // approve/reject, so staff isn't given this one. Head Coach can block
+    // anyone, including an Admin -- can't block yourself though.
     public function blockUser(string $uid): never {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireHeadCoach($auth);
@@ -450,9 +450,6 @@ class GenericController {
         $stmt->execute([$uid, Tenant::dojoId($auth)]);
         $target = $stmt->fetch();
         if (!$target) Response::notFound('User not found.');
-        if ($target['role'] === 'admin' && $auth['role'] !== 'admin') {
-            Response::forbidden('Only an Admin can block another Admin.');
-        }
         if (!$target['is_active']) Response::error('User is already blocked.', 422);
 
         $this->db->prepare("UPDATE users SET is_active = 0 WHERE uid = ?")->execute([$uid]);

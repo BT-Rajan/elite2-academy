@@ -195,13 +195,13 @@ export class PendingApprovalsComponent implements OnInit {
 
   // Block/unblock/downgrade are Head Coach or Admin only -- a step up from
   // approve/reject, which staff can also do (see GenericController::blockUser
-  // / unblockUser / downgradeCoachToStaff). A Head Coach can manage anyone
-  // except another Admin -- only a true Admin can act on an Admin account.
+  // / unblockUser / downgradeCoachToStaff). Head Coach can act on anyone,
+  // including an Admin account.
   canManage(u: AccountRecord): boolean {
     const user = this.auth.currentUser();
     if (!user) return false;
     if (user.role === 'admin') return true;
-    if (user.role === 'coach' && user.isHeadCoach) return u.role !== 'admin';
+    if (user.role === 'coach' && user.isHeadCoach) return true;
     return false;
   }
 
