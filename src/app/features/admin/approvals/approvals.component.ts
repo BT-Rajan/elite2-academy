@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
 import { UserService } from '../../../core/services/user.service';
 import { ToastService } from '../../../core/services/toast.service';
+import { ConfirmService } from '../../../core/services/confirm.service';
 import { PendingUser } from '../../../core/models';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
@@ -86,9 +87,10 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
   `],
 })
 export class PendingApprovalsComponent implements OnInit {
-  private auth  = inject(AuthService);
-  private us    = inject(UserService);
-  private toast = inject(ToastService);
+  private auth    = inject(AuthService);
+  private us      = inject(UserService);
+  private toast   = inject(ToastService);
+  private confirm = inject(ConfirmService);
 
   pending$!: Observable<PendingUser[]>;
   busy = signal<string | null>(null);
@@ -126,6 +128,13 @@ export class PendingApprovalsComponent implements OnInit {
   }
 
   async reject(u: PendingUser) {
+    const ok = await this.confirm.ask({
+      title: 'Reject this request?',
+      message: `${u.displayName}'s (${u.email}) account request will be rejected. They will not be able to sign in.`,
+      confirmLabel: 'Reject', danger: true,
+    });
+    if (!ok) return;
+
     this.busy.set(u.uid);
     try {
       await this.us.reject(u.uid);

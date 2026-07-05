@@ -7,6 +7,7 @@ import { StudentService } from '../../../core/services/student.service';
 import { AttendanceService } from '../../../core/services/attendance.service';
 import { UserService } from '../../../core/services/user.service';
 import { LoyaltyService } from '../../../core/services/loyalty.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { Student, AttendanceRecord, UserProfile } from '../../../core/models';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { StatCardComponent } from '../../../shared/components/stat-card/stat-card.component';
@@ -193,6 +194,7 @@ export class ReportsComponent implements OnInit {
   private auth = inject(AuthService);
   private sts  = inject(StudentService);
   private us   = inject(UserService);
+  private toast = inject(ToastService);
 
   students$!: Observable<Student[]>;
   coaches$!:  Observable<UserProfile[]>;
@@ -257,8 +259,6 @@ export class ReportsComponent implements OnInit {
   }
 
   exportCsv() {
-    // Build CSV from students — real impl would fetch all data
-    const header = 'Name,Discipline,Belt,Enrolled,Status\n';
-    alert('CSV export coming in Phase 7 — will include all selected report data.');
+    this.toast.info('CSV export is coming soon — will include all selected report data.');
   }
 }

@@ -7,6 +7,7 @@ import { UserProfile } from '../../core/models';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { AvatarComponent } from '../../shared/components/avatar/avatar.component';
 import { IconComponent } from '../../shared/components/icon/icon.component';
+import { ConfirmService } from '../../core/services/confirm.service';
 
 const SALUTATIONS = ['', 'Mr', 'Mrs', 'Ms', 'Mx', 'Dr'];
 const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
@@ -142,6 +143,7 @@ const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}
 export class ProfileComponent implements OnInit {
   private auth    = inject(AuthService);
   private profile = inject(ProfileService);
+  private confirm = inject(ConfirmService);
 
   user = this.auth.currentUser;
   salutations = SALUTATIONS;
@@ -209,6 +211,13 @@ export class ProfileComponent implements OnInit {
   }
 
   async removePhoto() {
+    const ok = await this.confirm.ask({
+      title: 'Remove profile photo?',
+      message: "You'll go back to a default avatar until you upload a new one.",
+      confirmLabel: 'Remove photo', danger: true,
+    });
+    if (!ok) return;
+
     this.photoBusy.set(true);
     this.photoError.set('');
     try {
