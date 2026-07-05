@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { roleGuard } from './core/guards/auth.guard';
+import { roleGuard, approvalsGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'public', pathMatch: 'full' },
@@ -25,7 +25,7 @@ export const routes: Routes = [
       { path: 'students',    loadComponent: () => import('./features/coach/student-detail/student-list.component').then(m => m.StudentListComponent) },
       { path: 'students/:id',loadComponent: () => import('./features/coach/student-detail/student-detail.component').then(m => m.StudentDetailComponent) },
       { path: 'staff',       loadComponent: () => import('./features/admin/staff/staff.component').then(m => m.StaffComponent) },
-      { path: 'approvals',   loadComponent: () => import('./features/admin/approvals/approvals.component').then(m => m.PendingApprovalsComponent) },
+      { path: 'approvals',   canActivate: [approvalsGuard], loadComponent: () => import('./features/admin/approvals/approvals.component').then(m => m.PendingApprovalsComponent) },
       { path: 'disciplines', loadComponent: () => import('./features/admin/disciplines/disciplines.component').then(m => m.DisciplinesComponent) },
       { path: 'reports',     loadComponent: () => import('./features/admin/reports/reports.component').then(m => m.ReportsComponent) },
       { path: 'communication', loadComponent: () => import('./features/communication/communication-center.component').then(m => m.CommunicationCenterComponent) },
@@ -47,7 +47,7 @@ export const routes: Routes = [
       { path: 'students',      loadComponent: () => import('./features/coach/student-detail/student-list.component').then(m => m.StudentListComponent) },
       { path: 'students/:id',  loadComponent: () => import('./features/coach/student-detail/student-detail.component').then(m => m.StudentDetailComponent) },
       { path: 'messages',      loadComponent: () => import('./features/coach/messages/coach-messages.component').then(m => m.CoachMessagesComponent) },
-      { path: 'approvals',     loadComponent: () => import('./features/admin/approvals/approvals.component').then(m => m.PendingApprovalsComponent) },
+      { path: 'approvals',     canActivate: [approvalsGuard], loadComponent: () => import('./features/admin/approvals/approvals.component').then(m => m.PendingApprovalsComponent) },
       { path: 'communication', loadComponent: () => import('./features/communication/communication-center.component').then(m => m.CommunicationCenterComponent) },
       { path: 'profile',       loadComponent: () => import('./features/profile/profile.component').then(m => m.ProfileComponent) },
     ]
@@ -80,7 +80,7 @@ export const routes: Routes = [
       { path: 'dashboard',     loadComponent: () => import('./features/staff/dashboard/staff-dashboard.component').then(m => m.StaffDashboardComponent) },
       { path: 'students',      loadComponent: () => import('./features/staff/students/staff-students.component').then(m => m.StaffStudentsComponent) },
       { path: 'schedule',      loadComponent: () => import('./features/staff/schedule/staff-schedule.component').then(m => m.StaffScheduleComponent) },
-      { path: 'approvals',     loadComponent: () => import('./features/admin/approvals/approvals.component').then(m => m.PendingApprovalsComponent) },
+      { path: 'approvals',     canActivate: [approvalsGuard], loadComponent: () => import('./features/admin/approvals/approvals.component').then(m => m.PendingApprovalsComponent) },
       { path: 'communication', loadComponent: () => import('./features/communication/communication-center.component').then(m => m.CommunicationCenterComponent) },
       { path: 'notifications', loadComponent: () => import('./features/parent/notifications/notifications.component').then(m => m.NotificationsComponent) },
       { path: 'profile',       loadComponent: () => import('./features/profile/profile.component').then(m => m.ProfileComponent) },

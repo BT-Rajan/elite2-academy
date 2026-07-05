@@ -239,9 +239,13 @@ try {
     // Users + account approvals
     $router->get('/users',         fn() => (new GenericController)->listUsers());
     $router->get('/users/pending', fn() => (new GenericController)->listPendingUsers());
-    $router->patch('/users/{uid}/head-coach', fn($uid) => (new GenericController)->setHeadCoach($uid));
-    $router->patch('/users/{uid}/approve',    fn($uid) => (new GenericController)->approveUser($uid));
-    $router->patch('/users/{uid}/reject',     fn($uid) => (new GenericController)->rejectUser($uid));
+    $router->get('/users/history', fn() => (new GenericController)->listUserHistory());
+    $router->patch('/users/{uid}/head-coach',        fn($uid) => (new GenericController)->setHeadCoach($uid));
+    $router->patch('/users/{uid}/approve',           fn($uid) => (new GenericController)->approveUser($uid));
+    $router->patch('/users/{uid}/reject',            fn($uid) => (new GenericController)->rejectUser($uid));
+    $router->patch('/users/{uid}/block',             fn($uid) => (new GenericController)->blockUser($uid));
+    $router->patch('/users/{uid}/unblock',           fn($uid) => (new GenericController)->unblockUser($uid));
+    $router->patch('/users/{uid}/downgrade-to-staff', fn($uid) => (new GenericController)->downgradeCoachToStaff($uid));
 
     // Dojos
     $router->get('/dojos/{dojoId}', fn($dojoId) => (new GenericController)->getDojo($dojoId));

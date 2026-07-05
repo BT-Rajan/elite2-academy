@@ -365,6 +365,23 @@ class GenericController {
         Response::ok($stmt->fetchAll());
     }
 
+    // GET /users/history — full account lifecycle: every sign-up regardless
+    // of approval_status (pending/approved/rejected) plus is_active/is_head_coach
+    // so the approvals page can show history, not just what's still pending.
+    // Same visibility rule as listPendingUsers (admin/staff/head-coach).
+    public function listUserHistory(): never {
+        $auth = AuthMiddleware::require();
+        AuthMiddleware::requireRole($auth, 'admin', 'staff', 'coach');
+        if ($auth['role'] === 'coach' && empty($auth['isHeadCoach'])) Response::forbidden();
+        $stmt = $this->db->prepare("
+            SELECT uid, email, display_name, role, approval_status, is_active,
+                   is_head_coach, approved_by, approved_at, created_at
+            FROM users WHERE dojo_id = ?
+            ORDER BY created_at DESC");
+        $stmt->execute([Tenant::dojoId($auth)]);
+        Response::ok($stmt->fetchAll());
+    }
+
     // PATCH /users/:uid/approve
     // Approving a pending 'admin' signup requires a Head Coach or existing
     // Admin. Any other pending role (coach/parent/staff) can be approved by
@@ -414,6 +431,69 @@ class GenericController {
             WHERE uid = ?")->execute([$auth['uid'], $uid]);
         Audit::log($this->db, $auth, 'user.reject', 'user', $uid, ['role' => $target['role']]);
 
+        Response::ok(['updated' => true]);
+    }
+
+    // PATCH /users/:uid/block — revoke access without deleting the account.
+    // Sets is_active = 0, which AuthMiddleware::authenticate() checks on
+    // every request, so this takes effect immediately (their current token
+    // stops working on their very next request, no separate session store
+    // needed). Head Coach or Admin only -- more consequential than a routine
+    // approve/reject, so staff isn't given this one. Can't block yourself
+    // or another admin unless you are one.
+    public function blockUser(string $uid): never {
+        $auth = AuthMiddleware::require();
+        AuthMiddleware::requireHeadCoach($auth);
+        if ($uid === $auth['uid']) Response::error('You cannot block your own account.', 422);
+
+        $stmt = $this->db->prepare("SELECT role, is_active FROM users WHERE uid = ? AND dojo_id = ?");
+        $stmt->execute([$uid, Tenant::dojoId($auth)]);
+        $target = $stmt->fetch();
+        if (!$target) Response::notFound('User not found.');
+        if ($target['role'] === 'admin' && $auth['role'] !== 'admin') {
+            Response::forbidden('Only an Admin can block another Admin.');
+        }
+        if (!$target['is_active']) Response::error('User is already blocked.', 422);
+
+        $this->db->prepare("UPDATE users SET is_active = 0 WHERE uid = ?")->execute([$uid]);
+        Audit::log($this->db, $auth, 'user.block', 'user', $uid, ['role' => $target['role']]);
+        Response::ok(['updated' => true]);
+    }
+
+    // PATCH /users/:uid/unblock — restore access for a previously blocked account.
+    public function unblockUser(string $uid): never {
+        $auth = AuthMiddleware::require();
+        AuthMiddleware::requireHeadCoach($auth);
+
+        $stmt = $this->db->prepare("SELECT role, is_active FROM users WHERE uid = ? AND dojo_id = ?");
+        $stmt->execute([$uid, Tenant::dojoId($auth)]);
+        $target = $stmt->fetch();
+        if (!$target) Response::notFound('User not found.');
+        if ($target['is_active']) Response::error('User is not blocked.', 422);
+
+        $this->db->prepare("UPDATE users SET is_active = 1 WHERE uid = ?")->execute([$uid]);
+        Audit::log($this->db, $auth, 'user.unblock', 'user', $uid, ['role' => $target['role']]);
+        Response::ok(['updated' => true]);
+    }
+
+    // PATCH /users/:uid/downgrade-to-staff — Head Coach/Admin call for a
+    // coach who should no longer hold coaching duties/permissions but stays
+    // employed. Only valid coach -> staff; any other starting role is a
+    // no-op error rather than silently reinterpreting the request. Clears
+    // is_head_coach and branch_id stays untouched (staff keep their branch).
+    public function downgradeCoachToStaff(string $uid): never {
+        $auth = AuthMiddleware::require();
+        AuthMiddleware::requireHeadCoach($auth);
+
+        $stmt = $this->db->prepare("SELECT role FROM users WHERE uid = ? AND dojo_id = ?");
+        $stmt->execute([$uid, Tenant::dojoId($auth)]);
+        $target = $stmt->fetch();
+        if (!$target) Response::notFound('User not found.');
+        if ($target['role'] !== 'coach') Response::error('Only a coach can be downgraded to staff.', 422);
+
+        $this->db->prepare("UPDATE users SET role = 'staff', is_head_coach = 0 WHERE uid = ?")
+            ->execute([$uid]);
+        Audit::log($this->db, $auth, 'user.downgrade_to_staff', 'user', $uid, []);
         Response::ok(['updated' => true]);
     }
 

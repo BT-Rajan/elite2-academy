@@ -28,6 +28,9 @@ CREATE TABLE IF NOT EXISTS users (
   branch_id     INT UNSIGNED NULL,
   avatar_url    VARCHAR(255),
   phone         VARCHAR(30),
+  -- Separate from approval_status: an approved account can still be
+  -- blocked (is_active=0) via the Approvals page without losing its
+  -- approval history. Checked on every request in AuthMiddleware::authenticate.
   is_active     TINYINT(1) NOT NULL DEFAULT 1,
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

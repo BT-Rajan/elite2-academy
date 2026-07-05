@@ -22,13 +22,20 @@ export interface UserProfile {
   createdAt: Date;
 }
 
-export interface PendingUser {
+export interface AccountRecord {
   uid: string;
   email: string;
   displayName: string;
   role: UserRole;
   createdAt: Date;
+  approvalStatus?: 'pending' | 'approved' | 'rejected';
+  isActive?: boolean;
+  isHeadCoach?: boolean;
+  approvedAt?: Date | null;
 }
+
+/** @deprecated use AccountRecord */
+export type PendingUser = AccountRecord;
 
 export interface Dojo {
   id: string;
