@@ -440,16 +440,19 @@ class GenericController {
     // stops working on their very next request, no separate session store
     // needed). Head Coach or Admin only -- more consequential than a routine
     // approve/reject, so staff isn't given this one. Head Coach can block
-    // anyone, including an Admin -- can't block yourself though.
+    // anyone, including an Admin -- except a Head Coach account, which
+    // nobody (not even another Head Coach or an Admin) can block. Can't
+    // block yourself either.
     public function blockUser(string $uid): never {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireHeadCoach($auth);
         if ($uid === $auth['uid']) Response::error('You cannot block your own account.', 422);
 
-        $stmt = $this->db->prepare("SELECT role, is_active FROM users WHERE uid = ? AND dojo_id = ?");
+        $stmt = $this->db->prepare("SELECT role, is_active, is_head_coach FROM users WHERE uid = ? AND dojo_id = ?");
         $stmt->execute([$uid, Tenant::dojoId($auth)]);
         $target = $stmt->fetch();
         if (!$target) Response::notFound('User not found.');
+        if ($target['is_head_coach']) Response::forbidden('A Head Coach account cannot be blocked.');
         if (!$target['is_active']) Response::error('User is already blocked.', 422);
 
         $this->db->prepare("UPDATE users SET is_active = 0 WHERE uid = ?")->execute([$uid]);
@@ -482,11 +485,12 @@ class GenericController {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireHeadCoach($auth);
 
-        $stmt = $this->db->prepare("SELECT role FROM users WHERE uid = ? AND dojo_id = ?");
+        $stmt = $this->db->prepare("SELECT role, is_head_coach FROM users WHERE uid = ? AND dojo_id = ?");
         $stmt->execute([$uid, Tenant::dojoId($auth)]);
         $target = $stmt->fetch();
         if (!$target) Response::notFound('User not found.');
         if ($target['role'] !== 'coach') Response::error('Only a coach can be downgraded to staff.', 422);
+        if ($target['is_head_coach']) Response::forbidden('A Head Coach account cannot be downgraded.');
 
         $this->db->prepare("UPDATE users SET role = 'staff', is_head_coach = 0 WHERE uid = ?")
             ->execute([$uid]);

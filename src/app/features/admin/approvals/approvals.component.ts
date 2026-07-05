@@ -93,7 +93,7 @@ type Tab = 'pending' | 'history';
 
                 <ng-template #lifecycleActions>
                   <ng-container *ngIf="canManage(u); else noManagePermission">
-                    <button *ngIf="u.role === 'coach' && u.approvalStatus === 'approved'"
+                    <button *ngIf="u.role === 'coach' && u.approvalStatus === 'approved' && !u.isHeadCoach"
                             class="btn btn--secondary btn--sm" [disabled]="busy() === u.uid"
                             (click)="downgrade(u)">
                       <dojo-icon name="trending" [size]="14"></dojo-icon> Downgrade to Staff
@@ -103,7 +103,7 @@ type Tab = 'pending' | 'history';
                             (click)="unblock(u)">
                       <dojo-icon name="check-circle" [size]="14"></dojo-icon> Unblock
                     </button>
-                    <button *ngIf="u.isActive !== false && u.approvalStatus !== 'rejected'"
+                    <button *ngIf="u.isActive !== false && u.approvalStatus !== 'rejected' && !u.isHeadCoach"
                             class="btn btn--secondary btn--sm" style="margin-left:8px" [disabled]="busy() === u.uid"
                             (click)="block(u)">
                       <dojo-icon name="warning" [size]="14"></dojo-icon> Block
