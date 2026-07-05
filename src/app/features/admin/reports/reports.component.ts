@@ -11,13 +11,14 @@ import { Student, AttendanceRecord, UserProfile } from '../../../core/models';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { StatCardComponent } from '../../../shared/components/stat-card/stat-card.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { IconComponent, IconName } from '../../../shared/components/icon/icon.component';
 
 type ReportTab = 'overview' | 'attendance' | 'students' | 'loyalty';
 
 @Component({
   selector: 'app-reports',
   standalone: true,
-  imports: [CommonModule, AsyncPipe, DatePipe, FormsModule,
+  imports: [CommonModule, AsyncPipe, DatePipe, FormsModule, IconComponent,
             PageHeaderComponent, StatCardComponent, EmptyStateComponent],
   template: `
     <dojo-page-header title="Reports" subtitle="Business analytics and performance metrics">
@@ -28,17 +29,17 @@ type ReportTab = 'overview' | 'attendance' | 'students' | 'loyalty';
     <div class="tabs mb-6">
       <button *ngFor="let t of tabs" class="tab-btn"
         [class.active]="activeTab() === t.key" (click)="activeTab.set(t.key)">
-        {{ t.icon }} {{ t.label }}
+        <dojo-icon [name]="t.icon" [size]="16"></dojo-icon> {{ t.label }}
       </button>
     </div>
 
     <!-- Overview -->
     <ng-container *ngIf="activeTab() === 'overview'">
       <div class="stat-grid stat-grid--4 mb-6">
-        <dojo-stat-card icon="🧒" [value]="stats().students"   label="Active Students"></dojo-stat-card>
-        <dojo-stat-card icon="👥" [value]="stats().coaches"    label="Coaches"></dojo-stat-card>
-        <dojo-stat-card icon="📅" [value]="stats().attendance" label="Sessions this month"></dojo-stat-card>
-        <dojo-stat-card icon="⭐" [value]="stats().loyalty"    label="Points awarded total"></dojo-stat-card>
+        <dojo-stat-card icon="child" [value]="stats().students"   label="Active Students"></dojo-stat-card>
+        <dojo-stat-card icon="users" [value]="stats().coaches"    label="Coaches"></dojo-stat-card>
+        <dojo-stat-card icon="calendar" [value]="stats().attendance" label="Sessions this month"></dojo-stat-card>
+        <dojo-stat-card icon="star" [value]="stats().loyalty"    label="Points awarded total"></dojo-stat-card>
       </div>
 
       <!-- Belt distribution -->
@@ -47,7 +48,7 @@ type ReportTab = 'overview' | 'attendance' | 'students' | 'loyalty';
           <div class="card__header"><span class="card__title">Students by Belt</span></div>
           <div class="card__body">
             <div *ngIf="students$ | async as students">
-              <dojo-empty-state *ngIf="students.length === 0" icon="🥋" title="No data yet"></dojo-empty-state>
+              <dojo-empty-state *ngIf="students.length === 0" icon="belt" title="No data yet"></dojo-empty-state>
               <div *ngFor="let row of beltDistribution(students)"
                 style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
                 <div style="width:12px;height:12px;border-radius:50%;flex-shrink:0" [style.background]="row.color"></div>
@@ -68,7 +69,7 @@ type ReportTab = 'overview' | 'attendance' | 'students' | 'loyalty';
           <div class="card__header"><span class="card__title">Enrolment Over Time</span></div>
           <div class="card__body">
             <div *ngIf="students$ | async as students">
-              <dojo-empty-state *ngIf="students.length === 0" icon="📈" title="No data yet"></dojo-empty-state>
+              <dojo-empty-state *ngIf="students.length === 0" icon="trending" title="No data yet"></dojo-empty-state>
               <div *ngFor="let row of enrolmentByMonth(students)"
                 style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
                 <div style="width:60px;font-size:12px;color:var(--text-muted);flex-shrink:0">{{ row.month }}</div>
@@ -104,7 +105,7 @@ type ReportTab = 'overview' | 'attendance' | 'students' | 'loyalty';
       <div class="card">
         <div class="card__header"><span class="card__title">Attendance Summary</span></div>
         <div *ngIf="students$ | async as students">
-          <dojo-empty-state *ngIf="students.length === 0" icon="📅" title="No data"></dojo-empty-state>
+          <dojo-empty-state *ngIf="students.length === 0" icon="calendar" title="No data"></dojo-empty-state>
           <table *ngIf="students.length > 0">
             <thead>
               <tr><th>Student</th><th>Belt</th><th style="text-align:center">Present</th>
@@ -134,7 +135,7 @@ type ReportTab = 'overview' | 'attendance' | 'students' | 'loyalty';
           <span class="text-muted text-sm" *ngIf="students$ | async as s">{{ s.length }} total</span>
         </div>
         <div *ngIf="students$ | async as students">
-          <dojo-empty-state *ngIf="students.length === 0" icon="🧒" title="No students"></dojo-empty-state>
+          <dojo-empty-state *ngIf="students.length === 0" icon="child" title="No students"></dojo-empty-state>
           <table *ngIf="students.length > 0">
             <thead>
               <tr><th>Name</th><th>Discipline</th><th>Belt</th><th>Enrolled</th><th>Status</th></tr>
@@ -160,9 +161,9 @@ type ReportTab = 'overview' | 'attendance' | 'students' | 'loyalty';
     <!-- Loyalty report -->
     <ng-container *ngIf="activeTab() === 'loyalty'">
       <div class="stat-grid stat-grid--3 mb-6">
-        <dojo-stat-card icon="⭐" [value]="loyaltyStats().total"    label="Total Points Awarded"></dojo-stat-card>
-        <dojo-stat-card icon="💸" [value]="loyaltyStats().redeemed" label="Points Redeemed"></dojo-stat-card>
-        <dojo-stat-card icon="👥" [value]="loyaltyStats().members"  label="Active Members"></dojo-stat-card>
+        <dojo-stat-card icon="star" [value]="loyaltyStats().total"    label="Total Points Awarded"></dojo-stat-card>
+        <dojo-stat-card icon="money" [value]="loyaltyStats().redeemed" label="Points Redeemed"></dojo-stat-card>
+        <dojo-stat-card icon="users" [value]="loyaltyStats().members"  label="Active Members"></dojo-stat-card>
       </div>
       <div class="card">
         <div class="card__header"><span class="card__title">Loyalty Tier Distribution</span></div>
@@ -203,11 +204,11 @@ export class ReportsComponent implements OnInit {
   stats      = signal({ students: 0, coaches: 0, attendance: 0, loyalty: 0 });
   loyaltyStats = signal({ total: 0, redeemed: 0, members: 0 });
 
-  tabs = [
-    { key: 'overview'   as ReportTab, icon: '⊞',  label: 'Overview' },
-    { key: 'attendance' as ReportTab, icon: '📅',  label: 'Attendance' },
-    { key: 'students'   as ReportTab, icon: '🧒',  label: 'Students' },
-    { key: 'loyalty'    as ReportTab, icon: '⭐',  label: 'Loyalty' },
+  tabs: { key: ReportTab; icon: IconName; label: string }[] = [
+    { key: 'overview'   as ReportTab, icon: 'home',     label: 'Overview' },
+    { key: 'attendance' as ReportTab, icon: 'calendar', label: 'Attendance' },
+    { key: 'students'   as ReportTab, icon: 'child',    label: 'Students' },
+    { key: 'loyalty'    as ReportTab, icon: 'star',     label: 'Loyalty' },
   ];
 
   ngOnInit() {
@@ -248,10 +249,10 @@ export class ReportsComponent implements OnInit {
 
   tierDistrib() {
     return [
-      { name: '🥉 Bronze',   color: '#cd7f32', count: 0, pct: 0 },
-      { name: '🥈 Silver',   color: '#c0c0c0', count: 0, pct: 0 },
-      { name: '🥇 Gold',     color: '#ffd700', count: 0, pct: 0 },
-      { name: '💎 Platinum', color: '#e5e4e2', count: 0, pct: 0 },
+      { name: 'Bronze',   color: '#cd7f32', count: 0, pct: 0 },
+      { name: 'Silver',   color: '#c0c0c0', count: 0, pct: 0 },
+      { name: 'Gold',     color: '#ffd700', count: 0, pct: 0 },
+      { name: 'Platinum', color: '#e5e4e2', count: 0, pct: 0 },
     ];
   }
 

@@ -13,12 +13,13 @@ import { StatCardComponent } from '../../../shared/components/stat-card/stat-car
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { LoadingComponent } from '../../../shared/components/loading/loading.component';
+import { IconComponent } from '../../../shared/components/icon/icon.component';
 
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
   imports: [CommonModule, AsyncPipe, DatePipe, RouterLink,
-            PageHeaderComponent, StatCardComponent, AvatarComponent, EmptyStateComponent, LoadingComponent],
+            PageHeaderComponent, StatCardComponent, AvatarComponent, EmptyStateComponent, LoadingComponent, IconComponent],
   template: `
     <dojo-page-header
       [title]="greeting()"
@@ -27,10 +28,10 @@ import { LoadingComponent } from '../../../shared/components/loading/loading.com
 
     <!-- Stats — every card goes somewhere or does something -->
     <div class="stat-grid stat-grid--4 mb-6">
-      <dojo-stat-card icon="🧒" [value]="stats().students" label="Active Students" link="/admin/students"></dojo-stat-card>
-      <dojo-stat-card icon="👥" [value]="stats().coaches"  label="Coaches" link="/admin/staff"></dojo-stat-card>
-      <dojo-stat-card icon="📅" [value]="stats().sessions" label="Open Sessions" link="/coach/attendance"></dojo-stat-card>
-      <dojo-stat-card icon="🆔" [value]="dojoId()" label="Dojo ID" sub="Click to copy — share with new members" [copy]="true"></dojo-stat-card>
+      <dojo-stat-card icon="child" [value]="stats().students" label="Active Students" link="/admin/students"></dojo-stat-card>
+      <dojo-stat-card icon="users" [value]="stats().coaches"  label="Coaches" link="/admin/staff"></dojo-stat-card>
+      <dojo-stat-card icon="calendar" [value]="stats().sessions" label="Open Sessions" link="/coach/attendance"></dojo-stat-card>
+      <dojo-stat-card icon="key" [value]="dojoId()" label="Dojo ID" sub="Click to copy — share with new members" [copy]="true"></dojo-stat-card>
     </div>
 
     <div class="form-grid form-grid--2">
@@ -42,7 +43,7 @@ import { LoadingComponent } from '../../../shared/components/loading/loading.com
         </div>
         <div *ngIf="students$ | async as students; else cardLoading">
           <dojo-empty-state *ngIf="students.length === 0"
-            icon="🧒" title="No students yet" subtitle="Parents enrol children after signing up.">
+            icon="child" title="No students yet" subtitle="Parents enrol children after signing up.">
           </dojo-empty-state>
           <a *ngFor="let s of students | slice:0:5" [routerLink]="['/admin/students', s.id]" class="row-link">
             <dojo-avatar [name]="s.firstName + ' ' + s.lastName" size="sm"></dojo-avatar>
@@ -60,22 +61,22 @@ import { LoadingComponent } from '../../../shared/components/loading/loading.com
         <div class="card__header"><span class="card__title">Quick Actions</span></div>
         <div class="card__body" style="display:flex;flex-direction:column;gap:8px">
           <a routerLink="/admin/students"    class="btn btn--secondary btn--full" style="justify-content:flex-start">
-            🧒 &nbsp; View All Students
+            <dojo-icon name="child" [size]="15"></dojo-icon> &nbsp; View All Students
           </a>
           <a routerLink="/admin/staff"       class="btn btn--secondary btn--full" style="justify-content:flex-start">
-            👥 &nbsp; Manage Staff & Parents
+            <dojo-icon name="users" [size]="15"></dojo-icon> &nbsp; Manage Staff & Parents
           </a>
           <a routerLink="/admin/disciplines" class="btn btn--secondary btn--full" style="justify-content:flex-start">
-            🥋 &nbsp; Disciplines & Belts
+            <dojo-icon name="belt" [size]="15"></dojo-icon> &nbsp; Disciplines & Belts
           </a>
           <a routerLink="/admin/reports"     class="btn btn--secondary btn--full" style="justify-content:flex-start">
-            📊 &nbsp; Reports & Analytics
+            <dojo-icon name="chart" [size]="15"></dojo-icon> &nbsp; Reports & Analytics
           </a>
           <a routerLink="/admin/settings"    class="btn btn--secondary btn--full" style="justify-content:flex-start">
-            ⚙ &nbsp; Platform Settings
+            <dojo-icon name="settings" [size]="15"></dojo-icon> &nbsp; Platform Settings
           </a>
           <a routerLink="/coach/dashboard"   class="btn btn--secondary btn--full" style="justify-content:flex-start">
-            🔄 &nbsp; Switch to Coach View
+            <dojo-icon name="refresh" [size]="15"></dojo-icon> &nbsp; Switch to Coach View
           </a>
         </div>
       </div>
@@ -88,7 +89,7 @@ import { LoadingComponent } from '../../../shared/components/loading/loading.com
         </div>
         <div *ngIf="sessions$ | async as sessions; else cardLoading">
           <dojo-empty-state *ngIf="sessions.length === 0"
-            icon="📅" title="No sessions" subtitle="Sessions appear here as coaches take attendance.">
+            icon="calendar" title="No sessions" subtitle="Sessions appear here as coaches take attendance.">
           </dojo-empty-state>
           <table *ngIf="sessions.length > 0">
             <thead><tr><th>Class</th><th>Date</th><th>Status</th><th></th></tr></thead>

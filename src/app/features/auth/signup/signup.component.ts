@@ -3,16 +3,17 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
+import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { UserRole } from '../../../core/models';
 
 @Component({
   selector: 'app-signup',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, IconComponent],
   template: `
     <div class="auth-page">
       <div class="auth-card">
-        <div class="auth-logo">🥋</div>
+        <div class="auth-logo"><dojo-icon name="belt" [size]="28"></dojo-icon></div>
         <h1 class="auth-title">Create Account</h1>
         <p class="auth-sub">Join your dojo's platform</p>
 

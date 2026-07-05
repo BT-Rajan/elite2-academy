@@ -6,6 +6,7 @@ import { ApiService } from '../../../core/services/api.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { LoyaltyService } from '../../../core/services/loyalty.service';
 import { ToastService } from '../../../core/services/toast.service';
+import { IconComponent, IconName } from '../../../shared/components/icon/icon.component';
 import { LoyaltyReward } from '../../../core/models';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
@@ -15,14 +16,14 @@ type SettingsTab = 'dojo' | 'loyalty' | 'notifications';
 @Component({
   selector: 'app-admin-settings',
   standalone: true,
-  imports: [CommonModule, AsyncPipe, FormsModule, PageHeaderComponent, EmptyStateComponent],
+  imports: [CommonModule, AsyncPipe, FormsModule, PageHeaderComponent, EmptyStateComponent, IconComponent],
   template: `
     <dojo-page-header title="Settings" subtitle="Configure your dojo's platform settings"></dojo-page-header>
 
     <div class="tabs mb-6">
       <button *ngFor="let t of tabs" class="tab-btn"
         [class.active]="activeTab() === t.key" (click)="activeTab.set(t.key)">
-        {{ t.icon }} {{ t.label }}
+        <dojo-icon [name]="t.icon" [size]="16"></dojo-icon> {{ t.label }}
       </button>
     </div>
 
@@ -88,7 +89,7 @@ type SettingsTab = 'dojo' | 'loyalty' | 'notifications';
         <div class="card__header"><span class="card__title">Point Earning Rules</span></div>
         <div class="card__body">
           <div *ngFor="let rule of pointRules" style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-            <div style="width:28px;font-size:18px;text-align:center">{{ rule.icon }}</div>
+            <div style="width:28px;text-align:center;display:flex;justify-content:center"><dojo-icon [name]="rule.icon"></dojo-icon></div>
             <div style="flex:1;font-size:13px;font-weight:500">{{ rule.label }}</div>
             <div style="display:flex;align-items:center;gap:6px">
               <input type="number" class="input" [(ngModel)]="rule.points"
@@ -165,11 +166,11 @@ type SettingsTab = 'dojo' | 'loyalty' | 'notifications';
 
         <div *ngIf="rewards$ | async as rewards">
           <dojo-empty-state *ngIf="rewards.length === 0"
-            icon="🎁" title="No rewards yet" subtitle="Add your first reward above.">
+            icon="gift" title="No rewards yet" subtitle="Add your first reward above.">
           </dojo-empty-state>
           <div *ngFor="let r of rewards"
             style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border)">
-            <div style="font-size:20px">{{ rewardIcon(r.type) }}</div>
+            <div><dojo-icon [name]="rewardIcon(r.type)" [size]="20"></dojo-icon></div>
             <div style="flex:1">
               <div style="font-weight:600;font-size:13px">{{ r.name }}</div>
               <div class="text-muted text-sm">{{ r.description }}</div>
@@ -262,13 +263,13 @@ export class AdminSettingsComponent implements OnInit {
     { value: 'Australia/Sydney', label: 'Sydney (AEST)' },
   ];
 
-  pointRules = [
-    { icon: '✓',  label: 'Attend a class (present)',  points: 10,  key: 'attendance' },
-    { icon: '⏱',  label: 'Attend a class (late)',      points: 5,   key: 'attendance_late' },
-    { icon: '🔄',  label: 'Membership renewal',         points: 100, key: 'renewal' },
-    { icon: '👥',  label: 'Refer a new member',          points: 200, key: 'referral' },
-    { icon: '🥋',  label: 'Belt promotion',              points: 150, key: 'promotion' },
-    { icon: '🎓',  label: 'Attend a seminar',            points: 50,  key: 'seminar' },
+  pointRules: { icon: IconName; label: string; points: number; key: string }[] = [
+    { icon: 'check',    label: 'Attend a class (present)',  points: 10,  key: 'attendance' },
+    { icon: 'calendar', label: 'Attend a class (late)',      points: 5,   key: 'attendance_late' },
+    { icon: 'refresh',  label: 'Membership renewal',         points: 100, key: 'renewal' },
+    { icon: 'users',    label: 'Refer a new member',          points: 200, key: 'referral' },
+    { icon: 'belt',     label: 'Belt promotion',              points: 150, key: 'promotion' },
+    { icon: 'graduation', label: 'Attend a seminar',          points: 50,  key: 'seminar' },
   ];
 
   tiers = [
@@ -290,10 +291,10 @@ export class AdminSettingsComponent implements OnInit {
     { key: 'objective_complete',label: 'Objective Completed',    desc: 'Notify parent when child completes an objective',enabled: true },
   ];
 
-  tabs = [
-    { key: 'dojo'          as SettingsTab, icon: '🏠', label: 'Dojo' },
-    { key: 'loyalty'       as SettingsTab, icon: '⭐', label: 'Loyalty Program' },
-    { key: 'notifications' as SettingsTab, icon: '🔔', label: 'Notifications' },
+  tabs: { key: SettingsTab; icon: IconName; label: string }[] = [
+    { key: 'dojo'          as SettingsTab, icon: 'home', label: 'Dojo' },
+    { key: 'loyalty'       as SettingsTab, icon: 'star', label: 'Loyalty Program' },
+    { key: 'notifications' as SettingsTab, icon: 'bell', label: 'Notifications' },
   ];
 
   ngOnInit() {
@@ -394,11 +395,11 @@ export class AdminSettingsComponent implements OnInit {
     }
   }
 
-  rewardIcon(type: string): string {
-    const map: Record<string, string> = {
-      discount: '💸', free_class: '🎟', merchandise: '👕', custom: '🎁',
+  rewardIcon(type: string): IconName {
+    const map: Record<string, IconName> = {
+      discount: 'money', free_class: 'ticket', merchandise: 'shirt', custom: 'gift',
     };
-    return map[type] ?? '🎁';
+    return map[type] ?? 'gift';
   }
 
   async copyId() {

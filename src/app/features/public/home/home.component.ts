@@ -1,16 +1,17 @@
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { IconComponent, IconName } from '../../../shared/components/icon/icon.component';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, IconComponent],
   template: `
     <!-- Hero -->
     <section class="hero">
       <div class="hero__inner">
-        <div class="hero__badge">🥋 Purpose-built for martial arts</div>
+        <div class="hero__badge"><dojo-icon name="belt" [size]="14"></dojo-icon> Purpose-built for martial arts</div>
         <h1 class="hero__title">
           Run your dojo<br>
           <span class="hero__accent">smarter, not harder</span>
@@ -24,16 +25,16 @@ import { CommonModule } from '@angular/common';
           <a routerLink="/public/schedule" class="btn btn--secondary btn--lg">View schedule</a>
         </div>
         <div class="hero__social-proof">
-          <div class="social-proof-item">✓ No credit card required</div>
-          <div class="social-proof-item">✓ Setup in 5 minutes</div>
-          <div class="social-proof-item">✓ Cancel anytime</div>
+          <div class="social-proof-item"><dojo-icon name="check" [size]="14"></dojo-icon> No credit card required</div>
+          <div class="social-proof-item"><dojo-icon name="check" [size]="14"></dojo-icon> Setup in 5 minutes</div>
+          <div class="social-proof-item"><dojo-icon name="check" [size]="14"></dojo-icon> Cancel anytime</div>
         </div>
       </div>
       <div class="hero__visual" aria-hidden="true">
         <div class="hero-card">
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
             <div style="width:40px;height:40px;border-radius:50%;background:var(--accent-dim);
-                        display:flex;align-items:center;justify-content:center;font-size:20px">🧒</div>
+                        display:flex;align-items:center;justify-content:center"><dojo-icon name="child" [size]="20"></dojo-icon></div>
             <div>
               <div style="font-weight:600;font-size:14px">Arjun Sharma</div>
               <div style="font-size:12px;color:var(--text-muted)">Kickboxing · Orange Belt</div>
@@ -52,7 +53,7 @@ import { CommonModule } from '@angular/common';
             </div>
           </div>
           <div style="background:var(--accent-dim);border-radius:8px;padding:10px 12px;font-size:12px">
-            💬 <em style="color:var(--text-muted)">"Excellent footwork today. Ready for belt test."</em>
+            <dojo-icon name="message" [size]="14"></dojo-icon> <em style="color:var(--text-muted)">"Excellent footwork today. Ready for belt test."</em>
           </div>
         </div>
       </div>
@@ -79,7 +80,7 @@ import { CommonModule } from '@angular/common';
 
         <div class="features-grid">
           <div *ngFor="let f of features" class="feature-card">
-            <div class="feature-card__icon">{{ f.icon }}</div>
+            <div class="feature-card__icon"><dojo-icon [name]="f.icon" [size]="24"></dojo-icon></div>
             <h3 class="feature-card__title">{{ f.title }}</h3>
             <p class="feature-card__desc">{{ f.desc }}</p>
           </div>
@@ -97,7 +98,7 @@ import { CommonModule } from '@angular/common';
         <div class="steps-grid">
           <div *ngFor="let s of steps; let i = index" class="step-card">
             <div class="step-card__num">{{ i + 1 }}</div>
-            <div class="step-card__icon">{{ s.icon }}</div>
+            <div class="step-card__icon"><dojo-icon [name]="s.icon" [size]="22"></dojo-icon></div>
             <h3 class="step-card__title">{{ s.title }}</h3>
             <p class="step-card__desc">{{ s.desc }}</p>
           </div>
@@ -115,14 +116,14 @@ import { CommonModule } from '@angular/common';
         <div class="portals-grid">
           <div *ngFor="let p of portals" class="portal-card" [style.border-color]="p.color">
             <div class="portal-card__header" [style.background]="p.color + '22'">
-              <span style="font-size:28px">{{ p.icon }}</span>
+              <span><dojo-icon [name]="p.icon" [size]="28"></dojo-icon></span>
               <div>
                 <div class="portal-card__role">{{ p.role }}</div>
                 <div class="portal-card__tagline">{{ p.tagline }}</div>
               </div>
             </div>
             <ul class="portal-card__features">
-              <li *ngFor="let f of p.features">✓ {{ f }}</li>
+              <li *ngFor="let f of p.features"><dojo-icon name="check" [size]="14"></dojo-icon> {{ f }}</li>
             </ul>
           </div>
         </div>
@@ -142,7 +143,7 @@ import { CommonModule } from '@angular/common';
             </p>
             <div class="loyalty-tiers">
               <div *ngFor="let t of tiers" class="tier-badge" [style.color]="t.color">
-                {{ t.icon }} {{ t.name }}
+                <dojo-icon [name]="t.icon" [size]="15"></dojo-icon> {{ t.name }}
               </div>
             </div>
             <a routerLink="/public/pricing" class="btn btn--primary btn--lg" style="margin-top:24px">
@@ -153,7 +154,7 @@ import { CommonModule } from '@angular/common';
             <div class="loyalty-card">
               <div style="font-size:13px;color:var(--text-muted);margin-bottom:4px">Available Points</div>
               <div style="font-size:48px;font-weight:800;color:var(--accent)">1,240</div>
-              <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px">🥇 Gold Member · 3,800 lifetime pts</div>
+              <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;display:flex;align-items:center;gap:6px"><dojo-icon name="medal" [size]="14"></dojo-icon> Gold Member · 3,800 lifetime pts</div>
               <div style="height:8px;background:var(--surface-2);border-radius:4px;overflow:hidden;margin-bottom:6px">
                 <div style="height:100%;width:78%;background:#ffd700;border-radius:4px"></div>
               </div>
@@ -161,7 +162,7 @@ import { CommonModule } from '@angular/common';
               <div style="margin-top:20px;display:flex;flex-direction:column;gap:8px">
                 <div *ngFor="let r of rewardPreview" style="display:flex;align-items:center;gap:10px;
                      background:var(--surface-2);border-radius:8px;padding:10px 12px">
-                  <span style="font-size:18px">{{ r.icon }}</span>
+                  <span><dojo-icon [name]="r.icon" [size]="18"></dojo-icon></span>
                   <div style="flex:1;font-size:13px">{{ r.name }}</div>
                   <span style="font-size:12px;font-weight:700;color:var(--accent)">{{ r.pts }} pts</span>
                 </div>
@@ -300,55 +301,55 @@ export class HomeComponent {
     { value: '500+',  label: 'Academies using Dojo Platform' },
     { value: '12K+',  label: 'Students tracked' },
     { value: '98%',   label: 'Parent satisfaction' },
-    { value: '4.9★',  label: 'Average rating' },
+    { value: '4.9', label: 'Average rating' },
   ];
 
-  features = [
-    { icon: '✓',  title: 'Smart Attendance',        desc: 'Mark attendance in seconds with 4 status categories. Parents notified automatically.' },
-    { icon: '📊', title: 'Skill Development',       desc: 'Track 9 dimensions per student. Visual progress bars parents can actually understand.' },
-    { icon: '🥋', title: 'Belt Progression',        desc: 'Configure your belt system, set requirements, award promotions with full history.' },
-    { icon: '💬', title: 'Parent Communication',    desc: 'Real-time messaging between coaches and parents. No more WhatsApp groups.' },
-    { icon: '⭐', title: 'Loyalty Program',         desc: 'Reward attendance and renewals with points. Reduce churn with tier-based perks.' },
-    { icon: '📈', title: 'Business Reports',        desc: 'Attendance rates, enrolment trends, belt distribution. Data to run your business.' },
-    { icon: '🎯', title: 'Student Objectives',      desc: 'Set and track individual goals per student. Celebrate completions with parents.' },
-    { icon: '📱', title: 'Mobile Ready',            desc: 'Full responsive design. Coaches mark attendance from their phone, parents check progress anywhere.' },
+  features: { icon: IconName; title: string; desc: string }[] = [
+    { icon: 'check',      title: 'Smart Attendance',        desc: 'Mark attendance in seconds with 4 status categories. Parents notified automatically.' },
+    { icon: 'chart',      title: 'Skill Development',       desc: 'Track 9 dimensions per student. Visual progress bars parents can actually understand.' },
+    { icon: 'belt',       title: 'Belt Progression',        desc: 'Configure your belt system, set requirements, award promotions with full history.' },
+    { icon: 'message',    title: 'Parent Communication',    desc: 'Real-time messaging between coaches and parents. No more WhatsApp groups.' },
+    { icon: 'star',       title: 'Loyalty Program',         desc: 'Reward attendance and renewals with points. Reduce churn with tier-based perks.' },
+    { icon: 'trending',   title: 'Business Reports',        desc: 'Attendance rates, enrolment trends, belt distribution. Data to run your business.' },
+    { icon: 'target',     title: 'Student Objectives',      desc: 'Set and track individual goals per student. Celebrate completions with parents.' },
+    { icon: 'phone',      title: 'Mobile Ready',            desc: 'Full responsive design. Coaches mark attendance from their phone, parents check progress anywhere.' },
   ];
 
-  steps = [
-    { icon: '🏠', title: 'Create your dojo',    desc: 'Sign up as admin. Your dojo gets a unique ID instantly.' },
-    { icon: '👥', title: 'Invite your team',    desc: 'Share the Dojo ID with coaches and parents. They join in one step.' },
-    { icon: '🥋', title: 'Set up disciplines',  desc: 'Configure your martial arts programs and belt levels.' },
-    { icon: '✓',  title: 'Start tracking',      desc: 'Take attendance, score skills, send messages. Everything in one place.' },
+  steps: { icon: IconName; title: string; desc: string }[] = [
+    { icon: 'home',  title: 'Create your dojo',    desc: 'Sign up as admin. Your dojo gets a unique ID instantly.' },
+    { icon: 'users', title: 'Invite your team',    desc: 'Share the Dojo ID with coaches and parents. They join in one step.' },
+    { icon: 'belt',  title: 'Set up disciplines',  desc: 'Configure your martial arts programs and belt levels.' },
+    { icon: 'check', title: 'Start tracking',      desc: 'Take attendance, score skills, send messages. Everything in one place.' },
   ];
 
-  portals = [
+  portals: { icon: IconName; role: string; color: string; tagline: string; features: string[] }[] = [
     {
-      icon: '⚙', role: 'Admin', color: '#6366f1',
+      icon: 'settings', role: 'Admin', color: '#6366f1',
       tagline: 'Run the business',
       features: ['Staff & member management', 'Disciplines & belt config', 'Business analytics & reports', 'Loyalty program settings', 'Notification preferences'],
     },
     {
-      icon: '👥', role: 'Coach', color: '#22c55e',
+      icon: 'users', role: 'Coach', color: '#22c55e',
       tagline: 'Guide students',
       features: ['Take class attendance', 'Score 9 student skills', 'Write session comments', 'Award belt promotions', 'Message parents directly'],
     },
     {
-      icon: '👨‍👩‍👧', role: 'Parent', color: '#f59e0b',
+      icon: 'child', role: 'Parent', color: '#f59e0b',
       tagline: 'Track progress',
       features: ['View child\'s skill progress', 'See attendance history', 'Read coach comments', 'Track belt journey', 'Earn & redeem loyalty points'],
     },
   ];
 
-  tiers = [
-    { icon: '🥉', name: 'Bronze', color: '#cd7f32' },
-    { icon: '🥈', name: 'Silver', color: '#c0c0c0' },
-    { icon: '🥇', name: 'Gold',   color: '#ffd700' },
-    { icon: '💎', name: 'Platinum', color: '#818cf8' },
+  tiers: { icon: IconName; name: string; color: string }[] = [
+    { icon: 'medal', name: 'Bronze', color: '#cd7f32' },
+    { icon: 'medal', name: 'Silver', color: '#c0c0c0' },
+    { icon: 'medal', name: 'Gold',   color: '#ffd700' },
+    { icon: 'gem',   name: 'Platinum', color: '#818cf8' },
   ];
 
-  rewardPreview = [
-    { icon: '💸', name: '10% off next renewal',  pts: 500 },
-    { icon: '🎟', name: 'One free class',         pts: 300 },
-    { icon: '👕', name: 'Academy merchandise',    pts: 800 },
+  rewardPreview: { icon: IconName; name: string; pts: number }[] = [
+    { icon: 'money',  name: '10% off next renewal',  pts: 500 },
+    { icon: 'ticket', name: 'One free class',         pts: 300 },
+    { icon: 'shirt', name: 'Academy merchandise',    pts: 800 },
   ];
 }

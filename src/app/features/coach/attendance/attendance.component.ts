@@ -84,7 +84,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
       <div class="card__body" style="padding:0">
         <div *ngIf="students$ | async as students">
           <dojo-empty-state *ngIf="students.length === 0"
-            icon="🧒" title="No students found"
+            icon="child" title="No students found"
             subtitle="Students assigned to your dojo will appear here.">
           </dojo-empty-state>
           <div *ngFor="let s of students" class="attendance-row">
@@ -116,7 +116,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
       <div class="card__header"><span class="card__title">Past Sessions</span></div>
       <div *ngIf="sessions$ | async as sessions">
         <dojo-empty-state *ngIf="sessions.length === 0"
-          icon="📅" title="No sessions yet" subtitle="Open a session above to start.">
+          icon="calendar" title="No sessions yet" subtitle="Open a session above to start.">
         </dojo-empty-state>
         <table *ngIf="sessions.length > 0">
           <thead>

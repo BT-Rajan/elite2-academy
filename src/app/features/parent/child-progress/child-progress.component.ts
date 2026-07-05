@@ -14,6 +14,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { SkillBarComponent } from '../../../shared/components/skill-bar/skill-bar.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { IconComponent, IconName } from '../../../shared/components/icon/icon.component';
 import { RoadmapComponent } from '../../../shared/components/roadmap/roadmap.component';
 import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
 
@@ -24,7 +25,7 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
   standalone: true,
   imports: [CommonModule, AsyncPipe, DatePipe, RouterLink,
             PageHeaderComponent, AvatarComponent, SkillBarComponent,
-            EmptyStateComponent, RoadmapComponent, TimeAgoPipe],
+            EmptyStateComponent, RoadmapComponent, TimeAgoPipe, IconComponent],
   template: `
     <dojo-page-header title="My Child's Progress" subtitle="Skill development and achievements"></dojo-page-header>
 
@@ -52,7 +53,7 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
             </div>
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
               <span class="badge badge--accent" style="font-size:13px;padding:4px 12px">
-                🥋 {{ s.beltName || 'No belt yet' }}
+                <dojo-icon name="belt" [size]="14"></dojo-icon> {{ s.beltName || "No belt yet" }}
               </span>
               <span *ngIf="attPct() !== null" class="badge"
                 [class.badge--success]="attPct()! >= 80"
@@ -71,7 +72,7 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
         <button *ngFor="let t of tabs" class="tab-btn"
           [class.active]="activeTab() === t.key"
           (click)="activeTab.set(t.key)">
-          {{ t.icon }} {{ t.label }}
+          <dojo-icon [name]="t.icon" [size]="16"></dojo-icon> {{ t.label }}
         </button>
       </div>
 
@@ -84,7 +85,7 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
             <div class="card__body">
               <ng-container *ngIf="latestSkills() as ls">
                 <div *ngIf="!hasAnySkill(ls)">
-                  <dojo-empty-state icon="📊" title="No skill data yet"
+                  <dojo-empty-state icon="chart" title="No skill data yet"
                     subtitle="Your coach will update skills after sessions.">
                   </dojo-empty-state>
                 </div>
@@ -105,12 +106,12 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
           <div class="card">
             <div class="card__header"><span class="card__title">Current Objectives</span></div>
             <div *ngIf="objectives$ | async as objs">
-              <dojo-empty-state *ngIf="objs.length === 0" icon="🎯" title="No objectives set yet"
+              <dojo-empty-state *ngIf="objs.length === 0" icon="target" title="No objectives set yet"
                 subtitle="Your coach will set objectives to work toward.">
               </dojo-empty-state>
               <div *ngFor="let o of objs"
                 style="display:flex;align-items:flex-start;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border)">
-                <span style="font-size:16px;margin-top:2px">{{ o.isComplete ? '✅' : '🎯' }}</span>
+                <span style="margin-top:2px"><dojo-icon [name]="o.isComplete ? 'check-circle' : 'target'" [size]="16"></dojo-icon></span>
                 <div style="flex:1">
                   <div style="font-size:13px" [style.text-decoration]="o.isComplete ? 'line-through' : 'none'"
                     [style.color]="o.isComplete ? 'var(--text-muted)' : 'var(--text)'">
@@ -132,7 +133,7 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
           <div class="card__header"><span class="card__title">Skill Assessments Over Time</span></div>
           <div *ngIf="comments$ | async as comments">
             <dojo-empty-state *ngIf="skillComments(comments).length === 0"
-              icon="📊" title="No skill data yet"
+              icon="chart" title="No skill data yet"
               subtitle="Skill scores will appear here after coach assessments.">
             </dojo-empty-state>
             <div *ngFor="let c of skillComments(comments)" style="padding:16px 20px;border-bottom:1px solid var(--border)">
@@ -166,7 +167,7 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
             </span>
           </div>
           <div *ngIf="attendance$ | async as records">
-            <dojo-empty-state *ngIf="records.length === 0" icon="📅" title="No attendance records yet"></dojo-empty-state>
+            <dojo-empty-state *ngIf="records.length === 0" icon="calendar" title="No attendance records yet"></dojo-empty-state>
             <div *ngIf="records.length > 0">
               <!-- Stats bar -->
               <div style="display:flex;gap:16px;padding:12px 20px;border-bottom:1px solid var(--border);flex-wrap:wrap">
@@ -203,7 +204,7 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
         <div class="card">
           <div class="card__header"><span class="card__title">Belt Journey</span></div>
           <div *ngIf="beltHistory$ | async as history">
-            <dojo-empty-state *ngIf="history.length === 0" icon="🥋" title="Belt journey starts here"
+            <dojo-empty-state *ngIf="history.length === 0" icon="belt" title="Belt journey starts here"
               subtitle="Your first belt promotion will appear here.">
             </dojo-empty-state>
             <div *ngFor="let b of history; let last = last" style="display:flex;gap:16px;padding:16px 20px;position:relative">
@@ -215,7 +216,7 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
                 <div *ngIf="!last" style="width:2px;flex:1;background:var(--border);margin-top:4px"></div>
               </div>
               <div style="flex:1;padding-bottom:16px">
-                <div style="font-weight:700;font-size:15px">🥋 {{ b.beltName }}</div>
+                <div style="font-weight:700;font-size:15px;display:flex;align-items:center;gap:6px"><dojo-icon name="belt" [size]="15"></dojo-icon> {{ b.beltName }}</div>
                 <div class="text-muted text-sm" style="margin-top:2px">
                   Awarded {{ b.awardedAt | date:'MMMM d, y' }} by {{ b.awardedBy }}
                 </div>
@@ -235,7 +236,7 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
           <div class="card__body">
             <div class="progress-grid">
               <div *ngFor="let t of trackOrder" class="progress-item">
-                <span class="progress-icon">{{ trackIcon[t] }}</span>
+                <span class="progress-icon"><dojo-icon [name]="trackIcon[t]"></dojo-icon></span>
                 <span class="text-muted text-sm">{{ trackLabel[t] }}</span>
                 <span class="badge" [class.badge--success]="r.tracks[t].effectiveResult === 'pass'"
                   [class.badge--warning]="r.tracks[t].effectiveResult === 'fail'"
@@ -244,27 +245,27 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
                 </span>
               </div>
               <div class="progress-item">
-                <span class="progress-icon">🎓</span>
+                <span class="progress-icon"><dojo-icon name="graduation"></dojo-icon></span>
                 <span class="text-muted text-sm">Seminar Points</span>
                 <span class="badge" [class.badge--success]="r.seminarPoints >= r.seminarPointsRequired" [class.badge--gray]="r.seminarPoints < r.seminarPointsRequired">
                   {{ r.seminarPoints }} / {{ r.seminarPointsRequired }}
                 </span>
               </div>
               <div class="progress-item">
-                <span class="progress-icon">🥋</span>
+                <span class="progress-icon"><dojo-icon name="belt"></dojo-icon></span>
                 <span class="text-muted text-sm">BJJ Stripes ({{ r.bjjStripeLabel }})</span>
                 <span class="badge" [class.badge--success]="r.bjjStripes >= r.bjjStripesRequired" [class.badge--gray]="r.bjjStripes < r.bjjStripesRequired">
                   {{ r.bjjStripes }} / {{ r.bjjStripesRequired }}
                 </span>
               </div>
             </div>
-            <div *ngIf="r.isReady" class="ready-banner">🎉 All requirements met — ready for promotion!</div>
+            <div *ngIf="r.isReady" class="ready-banner"><dojo-icon name="party" [size]="14"></dojo-icon> All requirements met — ready for promotion!</div>
           </div>
         </div>
         <div class="card" *ngIf="roadmap$ | async as roadmap">
           <div class="card__header"><span class="card__title">Curriculum Roadmap</span></div>
           <div class="card__body">
-            <dojo-empty-state *ngIf="roadmap.length === 0" icon="🗺️" title="No roadmap configured yet"
+            <dojo-empty-state *ngIf="roadmap.length === 0" icon="map" title="No roadmap configured yet"
               subtitle="Your dojo hasn't set up a curriculum roadmap for this discipline."></dojo-empty-state>
             <dojo-roadmap *ngIf="roadmap.length" [belts]="roadmap" [currentBeltId]="s.currentBeltId"></dojo-roadmap>
           </div>
@@ -276,7 +277,7 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
         <div class="card">
           <div class="card__header"><span class="card__title">Coach Comments</span></div>
           <div *ngIf="comments$ | async as comments">
-            <dojo-empty-state *ngIf="comments.length === 0" icon="💬" title="No comments yet"
+            <dojo-empty-state *ngIf="comments.length === 0" icon="message" title="No comments yet"
               subtitle="Your coach will post session notes and feedback here.">
             </dojo-empty-state>
             <div *ngFor="let c of textComments(comments)" style="padding:16px 20px;border-bottom:1px solid var(--border)">
@@ -329,7 +330,7 @@ export class ChildProgressComponent implements OnInit {
   readiness$!:  Observable<PromotionReadiness>;
 
   trackOrder = ['striking', 'grappling', 'selfdefense'] as const;
-  trackIcon: Record<string, string>  = { striking: '🥊', grappling: '🤼', selfdefense: '🛡️' };
+  trackIcon: Record<string, IconName> = { striking: 'training', grappling: 'belt', selfdefense: 'shield' };
   trackLabel: Record<string, string> = { striking: 'Striking', grappling: 'Grappling', selfdefense: 'Self-Defense' };
 
   activeTab  = signal<Tab>('overview');
@@ -345,13 +346,13 @@ export class ChildProgressComponent implements OnInit {
     { label: 'Excused', color: '#3b82f6' }, { label: 'Absent',  color: '#ef4444' },
   ];
 
-  tabs = [
-    { key: 'overview'   as Tab, icon: '⊞',  label: 'Overview' },
-    { key: 'skills'     as Tab, icon: '📊',  label: 'Skills' },
-    { key: 'attendance' as Tab, icon: '✓',   label: 'Attendance' },
-    { key: 'belt'       as Tab, icon: '🥋',  label: 'Belt Journey' },
-    { key: 'roadmap'    as Tab, icon: '🗺️',  label: 'Roadmap' },
-    { key: 'comments'   as Tab, icon: '💬',  label: 'Coach Notes' },
+  tabs: { key: Tab; icon: IconName; label: string }[] = [
+    { key: 'overview'   as Tab, icon: 'home',       label: 'Overview' },
+    { key: 'skills'     as Tab, icon: 'chart',      label: 'Skills' },
+    { key: 'attendance' as Tab, icon: 'check',      label: 'Attendance' },
+    { key: 'belt'       as Tab, icon: 'belt',       label: 'Belt Journey' },
+    { key: 'roadmap'    as Tab, icon: 'map',        label: 'Roadmap' },
+    { key: 'comments'   as Tab, icon: 'message',    label: 'Coach Notes' },
   ];
 
   ngOnInit() {

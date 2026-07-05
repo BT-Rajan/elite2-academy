@@ -18,7 +18,7 @@ const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','
 
     <div *ngIf="schedules$ | async as schedules">
       <dojo-empty-state *ngIf="schedules.length === 0"
-        icon="📅" title="No classes scheduled" subtitle="">
+        icon="calendar" title="No classes scheduled" subtitle="">
       </dojo-empty-state>
 
       <div class="card mb-4" *ngFor="let day of DAY_NAMES; let i = index">

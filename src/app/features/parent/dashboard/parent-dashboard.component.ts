@@ -10,13 +10,14 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { LoadingComponent } from '../../../shared/components/loading/loading.component';
+import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { LOYALTY_TIER_COLORS } from '../../../core/utils';
 
 @Component({
   selector: 'app-parent-dashboard',
   standalone: true,
   imports: [CommonModule, AsyncPipe, RouterLink, TitleCasePipe,
-            PageHeaderComponent, AvatarComponent, EmptyStateComponent, LoadingComponent],
+            PageHeaderComponent, AvatarComponent, EmptyStateComponent, LoadingComponent, IconComponent],
   template: `
     <dojo-page-header
       [title]="greeting"
@@ -25,7 +26,7 @@ import { LOYALTY_TIER_COLORS } from '../../../core/utils';
 
     <ng-container *ngIf="students$ | async as students; else loadingChildren">
       <dojo-empty-state *ngIf="students.length === 0"
-        icon="🧒" title="No children linked yet"
+        icon="child" title="No children linked yet"
         subtitle="Contact your dojo admin to link your child's profile.">
       </dojo-empty-state>
 
@@ -54,7 +55,7 @@ import { LOYALTY_TIER_COLORS } from '../../../core/utils';
           </div>
           <div>
             <div class="badge" [style.background]="tierColor(loyalty.tier)" style="font-size:13px;padding:4px 12px">
-              ⭐ {{ loyalty.tier | titlecase }} Member
+              <dojo-icon name="star" [size]="14"></dojo-icon> {{ loyalty.tier | titlecase }} Member
             </div>
             <div class="text-muted text-sm" style="margin-top:6px">{{ loyalty.lifetimePoints }} lifetime points</div>
           </div>

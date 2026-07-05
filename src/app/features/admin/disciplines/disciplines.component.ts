@@ -5,6 +5,7 @@ import { Observable, switchMap, of } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
 import { DisciplineService } from '../../../core/services/discipline.service';
 import { ToastService } from '../../../core/services/toast.service';
+import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { Discipline, Belt } from '../../../core/models';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
@@ -12,7 +13,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
 @Component({
   selector: 'app-disciplines',
   standalone: true,
-  imports: [CommonModule, AsyncPipe, FormsModule, PageHeaderComponent, EmptyStateComponent],
+  imports: [CommonModule, AsyncPipe, FormsModule, PageHeaderComponent, EmptyStateComponent, IconComponent],
   template: `
     <dojo-page-header title="Disciplines & Belts" subtitle="Configure martial arts programs and belt progressions">
       <button class="btn btn--primary" (click)="showAddDisc.set(true)">+ Add Discipline</button>
@@ -49,7 +50,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
     <!-- Discipline list -->
     <div *ngIf="disciplines$ | async as discs">
       <dojo-empty-state *ngIf="discs.length === 0"
-        icon="🥋" title="No disciplines yet"
+        icon="belt" title="No disciplines yet"
         subtitle="Add your first discipline to start configuring belt progressions.">
       </dojo-empty-state>
 
@@ -67,7 +68,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
           <div class="card__body" style="padding:0">
             <div *ngIf="getBelts(d.id) | async as belts">
               <dojo-empty-state *ngIf="belts.length === 0"
-                icon="🎽" title="No belts configured" subtitle="Add belts to this discipline.">
+                icon="shirt" title="No belts configured" subtitle="Add belts to this discipline.">
               </dojo-empty-state>
               <div *ngFor="let b of belts; let i = index"
                 style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border)">
@@ -78,9 +79,9 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
                     {{ b.minClasses }} classes · Score {{ b.minScore }}/10 min
                   </div>
                   <div *ngIf="b.kickboxingLevel || b.bjjStripeLabel || b.seminarPointsRequired" class="text-muted text-sm">
-                    <span *ngIf="b.kickboxingLevel">🥊 {{ b.kickboxingLevel }}</span>
-                    <span *ngIf="b.bjjStripeLabel"> · 🥋 {{ b.bjjStripeLabel }}</span>
-                    <span *ngIf="b.seminarPointsRequired"> · 🎓 {{ b.seminarPointsRequired }} pts</span>
+                    <span *ngIf="b.kickboxingLevel"><dojo-icon name="training" [size]="13"></dojo-icon> {{ b.kickboxingLevel }}</span>
+                    <span *ngIf="b.bjjStripeLabel"> · <dojo-icon name="belt" [size]="13"></dojo-icon> {{ b.bjjStripeLabel }}</span>
+                    <span *ngIf="b.seminarPointsRequired"> · <dojo-icon name="graduation" [size]="13"></dojo-icon> {{ b.seminarPointsRequired }} pts</span>
                   </div>
                 </div>
                 <span class="badge badge--gray" style="font-size:11px">Level {{ b.sortOrder }}</span>

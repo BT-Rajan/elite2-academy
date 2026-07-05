@@ -8,6 +8,7 @@ import { DisciplineService } from '../../../core/services/discipline.service';
 import { ClassSchedule, Discipline } from '../../../core/models';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { IconComponent } from '../../../shared/components/icon/icon.component';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -15,7 +16,7 @@ const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 @Component({
   selector: 'app-public-schedule',
   standalone: true,
-  imports: [CommonModule, AsyncPipe, RouterLink, FormsModule, PageHeaderComponent, EmptyStateComponent],
+  imports: [CommonModule, AsyncPipe, RouterLink, FormsModule, PageHeaderComponent, EmptyStateComponent, IconComponent],
   template: `
     <!-- Page header -->
     <div class="sched-hero">
@@ -69,7 +70,7 @@ const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
                 (click)="selected.set(c)">
                 <div class="class-card__time">{{ c.startTime }} – {{ c.endTime }}</div>
                 <div class="class-card__name">{{ c.name }}</div>
-                <div class="class-card__loc" *ngIf="c.location">📍 {{ c.location }}</div>
+                <div class="class-card__loc" *ngIf="c.location"><dojo-icon name="pin" [size]="13"></dojo-icon> {{ c.location }}</div>
               </div>
             </ng-container>
             <div *ngIf="classesForDay(filtered(allClasses()), i).length === 0"
@@ -83,7 +84,7 @@ const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       <!-- List fallback for mobile -->
       <div class="class-list-mobile">
         <ng-container *ngIf="filtered(allClasses()).length === 0">
-          <dojo-empty-state icon="📅" title="No classes found" subtitle="Try adjusting your filters."></dojo-empty-state>
+          <dojo-empty-state icon="calendar" title="No classes found" subtitle="Try adjusting your filters."></dojo-empty-state>
         </ng-container>
         <div *ngFor="let c of filtered(allClasses())" class="class-list-item"
           [style.border-left-color]="discColor(c.disciplineId)" (click)="selected.set(c)">
@@ -92,7 +93,7 @@ const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
               <div style="font-weight:600;font-size:14px">{{ c.name }}</div>
               <div style="font-size:13px;color:var(--text-muted)">
                 {{ days[c.dayOfWeek] }} · {{ c.startTime }}–{{ c.endTime }}
-                <span *ngIf="c.location"> · 📍{{ c.location }}</span>
+                <span *ngIf="c.location"> · <dojo-icon name="pin" [size]="13"></dojo-icon> {{ c.location }}</span>
               </div>
             </div>
             <a routerLink="/auth/signup" class="btn btn--primary btn--sm" style="margin-left:auto"
@@ -128,7 +129,7 @@ const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         </div>
         <div style="display:flex;gap:8px">
           <a routerLink="/auth/signup" class="btn btn--primary btn--full">
-            🥋 Enrol now — it's free
+            <dojo-icon name="belt" [size]="14"></dojo-icon> Enrol now — it's free
           </a>
         </div>
         <div style="font-size:12px;color:var(--text-muted);text-align:center;margin-top:10px">

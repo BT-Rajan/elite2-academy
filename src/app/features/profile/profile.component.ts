@@ -6,6 +6,7 @@ import { ProfileService } from '../../core/services/profile.service';
 import { UserProfile } from '../../core/models';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { AvatarComponent } from '../../shared/components/avatar/avatar.component';
+import { IconComponent } from '../../shared/components/icon/icon.component';
 
 const SALUTATIONS = ['', 'Mr', 'Mrs', 'Ms', 'Mx', 'Dr'];
 const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
@@ -15,7 +16,7 @@ const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, FormsModule, PageHeaderComponent, AvatarComponent],
+  imports: [CommonModule, FormsModule, PageHeaderComponent, AvatarComponent, IconComponent],
   template: `
     <dojo-page-header title="My Profile" subtitle="Manage your photo, details, and password"></dojo-page-header>
 
@@ -29,10 +30,10 @@ const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}
           <div style="display:flex;flex-direction:column;gap:8px">
             <input #fileInput type="file" accept="image/jpeg,image/png,image/webp" style="display:none" (change)="onFileSelected($event)">
             <button class="btn btn--secondary btn--sm" (click)="fileInput.click()" [disabled]="photoBusy()">
-              {{ photoBusy() ? 'Uploading…' : '📷 Upload photo' }}
+              @if (photoBusy()) { Uploading… } @else { <dojo-icon name="camera" [size]="14"></dojo-icon> Upload photo }
             </button>
             <button class="btn btn--secondary btn--sm" *ngIf="user()?.avatarUrl" (click)="removePhoto()" [disabled]="photoBusy()">
-              🗑️ Remove photo
+              <dojo-icon name="trash" [size]="14"></dojo-icon> Remove photo
             </button>
             <div class="text-muted text-sm">JPG, PNG, or WEBP · up to 3MB</div>
             <div class="form-error" *ngIf="photoError()">{{ photoError() }}</div>

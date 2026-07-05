@@ -32,7 +32,7 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
         </div>
         <div *ngIf="sessions$ | async as sessions; else cardLoading">
           <div *ngIf="sessions.length === 0">
-            <dojo-empty-state icon="📅" title="No sessions yet" subtitle="Start taking attendance to see sessions here."></dojo-empty-state>
+            <dojo-empty-state icon="calendar" title="No sessions yet" subtitle="Start taking attendance to see sessions here."></dojo-empty-state>
           </div>
           <table *ngIf="sessions.length > 0">
             <thead><tr><th>Class</th><th>Date</th><th>Status</th></tr></thead>
@@ -56,7 +56,7 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
           <a routerLink="/coach/students" class="btn btn--secondary btn--sm">View all</a>
         </div>
         <div *ngIf="students$ | async as students; else cardLoading">
-          <dojo-empty-state *ngIf="students.length === 0" icon="🧒" title="No students assigned" subtitle="Students are assigned by admin."></dojo-empty-state>
+          <dojo-empty-state *ngIf="students.length === 0" icon="child" title="No students assigned" subtitle="Students are assigned by admin."></dojo-empty-state>
           <div *ngFor="let s of students | slice:0:6"
                style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border);cursor:pointer"
                [routerLink]="['/coach/students', s.id]">

@@ -11,6 +11,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { BadgeComponent } from '../../../shared/components/badge/badge.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
 
 type View = 'coaches' | 'staff' | 'parents' | 'invite';
@@ -20,7 +21,7 @@ type View = 'coaches' | 'staff' | 'parents' | 'invite';
   standalone: true,
   imports: [CommonModule, AsyncPipe, DatePipe, FormsModule,
             PageHeaderComponent, AvatarComponent, BadgeComponent,
-            EmptyStateComponent, TimeAgoPipe],
+            EmptyStateComponent, TimeAgoPipe, IconComponent],
   template: `
     <dojo-page-header title="Staff & Members" subtitle="Manage coaches, parents and access">
       <button class="btn btn--primary" (click)="activeView.set('invite')">+ Invite User</button>
@@ -29,13 +30,13 @@ type View = 'coaches' | 'staff' | 'parents' | 'invite';
     <!-- Tab switcher -->
     <div class="tabs mb-4">
       <button class="tab-btn" [class.active]="activeView() === 'coaches'" (click)="activeView.set('coaches')">
-        👥 Coaches ({{ (coaches$ | async)?.length ?? 0 }})
+        <dojo-icon name="users" [size]="14"></dojo-icon> Coaches ({{ (coaches$ | async)?.length ?? 0 }})
       </button>
       <button class="tab-btn" [class.active]="activeView() === 'staff'" (click)="activeView.set('staff')">
-        🗂️ Staff ({{ (staff$ | async)?.length ?? 0 }})
+        <dojo-icon name="folder" [size]="14"></dojo-icon> Staff ({{ (staff$ | async)?.length ?? 0 }})
       </button>
       <button class="tab-btn" [class.active]="activeView() === 'parents'" (click)="activeView.set('parents')">
-        👨‍👩‍👧 Parents ({{ (parents$ | async)?.length ?? 0 }})
+        <dojo-icon name="child" [size]="14"></dojo-icon> Parents ({{ (parents$ | async)?.length ?? 0 }})
       </button>
     </div>
 
@@ -47,7 +48,7 @@ type View = 'coaches' | 'staff' | 'parents' | 'invite';
       <div class="card">
         <div *ngIf="coaches$ | async as coaches">
           <dojo-empty-state *ngIf="coaches.length === 0"
-            icon="👥" title="No coaches yet"
+            icon="users" title="No coaches yet"
             subtitle="Invite coaches using the button above.">
           </dojo-empty-state>
           <table *ngIf="coaches.length > 0">
@@ -66,7 +67,7 @@ type View = 'coaches' | 'staff' | 'parents' | 'invite';
                   <span class="badge badge--accent">{{ studentCount(c.uid) }} students</span>
                 </td>
                 <td>
-                  <span *ngIf="c.isHeadCoach" class="badge badge--success">⭐ Head Coach</span>
+                  <span *ngIf="c.isHeadCoach" class="badge badge--success"><dojo-icon name="star" [size]="12"></dojo-icon> Head Coach</span>
                   <span *ngIf="!c.isHeadCoach" class="badge badge--gray">Coach</span>
                 </td>
                 <td>
@@ -88,7 +89,7 @@ type View = 'coaches' | 'staff' | 'parents' | 'invite';
               <div class="text-muted text-sm">{{ coach.email }}</div>
             </div>
           </div>
-          <button class="btn btn--ghost btn--sm" (click)="selectedCoach.set(null)">✕ Close</button>
+          <button class="btn btn--ghost btn--sm" (click)="selectedCoach.set(null)"><dojo-icon name="close" [size]="14"></dojo-icon> Close</button>
         </div>
         <div class="card__body">
           <div class="form-grid form-grid--3">
@@ -108,7 +109,7 @@ type View = 'coaches' | 'staff' | 'parents' | 'invite';
 
           <div style="margin-top:16px;padding:12px 16px;background:var(--surface-2);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
             <div>
-              <div style="font-weight:600;font-size:13px">⭐ Head Coach</div>
+              <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px"><dojo-icon name="star" [size]="14"></dojo-icon> Head Coach</div>
               <div class="text-muted text-sm">Can overrule other coaches' evaluations and force promotions.</div>
             </div>
             <button class="btn btn--sm" [class.btn--primary]="coach.isHeadCoach" [class.btn--secondary]="!coach.isHeadCoach"
@@ -127,7 +128,7 @@ type View = 'coaches' | 'staff' | 'parents' | 'invite';
                 <span class="badge badge--accent" style="margin-left:auto">{{ s.beltName || 'No belt' }}</span>
               </div>
               <dojo-empty-state *ngIf="coachStudents(all, coach.uid).length === 0"
-                icon="🧒" title="No students assigned yet" subtitle="">
+                icon="child" title="No students assigned yet" subtitle="">
               </dojo-empty-state>
             </div>
           </div>
@@ -143,7 +144,7 @@ type View = 'coaches' | 'staff' | 'parents' | 'invite';
       <div class="card">
         <div *ngIf="staff$ | async as staff">
           <dojo-empty-state *ngIf="staff.length === 0"
-            icon="🗂️" title="No staff yet"
+            icon="folder" title="No staff yet"
             subtitle="Invite front-desk or office staff using the button above.">
           </dojo-empty-state>
           <table *ngIf="staff.length > 0">
@@ -173,7 +174,7 @@ type View = 'coaches' | 'staff' | 'parents' | 'invite';
       <div class="card">
         <div *ngIf="parents$ | async as parents">
           <dojo-empty-state *ngIf="parents.length === 0"
-            icon="👨‍👩‍👧" title="No parents registered"
+            icon="users" title="No parents registered"
             subtitle="Parents register themselves and enrol their children.">
           </dojo-empty-state>
           <table *ngIf="parents.length > 0">

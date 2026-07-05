@@ -9,20 +9,21 @@ import { LOYALTY_TIER_COLORS } from '../../../core/utils';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
+import { IconComponent, IconName } from '../../../shared/components/icon/icon.component';
 
 const TIER_ORDER = ['bronze', 'silver', 'gold', 'platinum'];
 const TIER_THRESHOLDS: Record<string, number> = {
   bronze: 0, silver: 500, gold: 1500, platinum: 3000
 };
-const TIER_ICONS: Record<string, string> = {
-  bronze: '🥉', silver: '🥈', gold: '🥇', platinum: '💎'
+const TIER_ICONS: Record<string, IconName> = {
+  bronze: 'medal', silver: 'medal', gold: 'medal', platinum: 'gem'
 };
 
 @Component({
   selector: 'app-loyalty',
   standalone: true,
   imports: [CommonModule, AsyncPipe, DatePipe, TitleCasePipe,
-            PageHeaderComponent, EmptyStateComponent, TimeAgoPipe],
+            PageHeaderComponent, EmptyStateComponent, TimeAgoPipe, IconComponent],
   template: `
     <dojo-page-header title="Loyalty & Rewards"
       subtitle="Earn points, unlock rewards and discounts">
@@ -41,7 +42,7 @@ const TIER_ICONS: Record<string, string> = {
         </div>
         <div class="hero-right">
           <div class="tier-badge" [style.color]="tierColor(acct.tier)">
-            {{ tierIcon(acct.tier) }} {{ acct.tier | titlecase }}
+            <dojo-icon [name]="tierIcon(acct.tier)" [size]="20"></dojo-icon> {{ acct.tier | titlecase }}
           </div>
           <!-- Tier progress bar -->
           <div *ngIf="nextTier(acct.tier) as nt" style="margin-top:12px">
@@ -61,7 +62,7 @@ const TIER_ICONS: Record<string, string> = {
             </div>
           </div>
           <div *ngIf="!nextTier(acct.tier)" style="margin-top:8px">
-            <span class="badge badge--accent">🏆 Maximum tier reached!</span>
+            <span class="badge badge--accent"><dojo-icon name="trophy" [size]="13"></dojo-icon> Maximum tier reached!</span>
           </div>
         </div>
       </div>
@@ -72,7 +73,7 @@ const TIER_ICONS: Record<string, string> = {
         <div class="card__body">
           <div class="earn-grid">
             <div class="earn-item" *ngFor="let e of earningRules">
-              <div class="earn-icon">{{ e.icon }}</div>
+              <div class="earn-icon"><dojo-icon [name]="e.icon" [size]="22"></dojo-icon></div>
               <div>
                 <div style="font-weight:600;font-size:13px">{{ e.label }}</div>
                 <div class="text-accent" style="font-size:18px;font-weight:700">+{{ e.points }} pts</div>
@@ -90,13 +91,13 @@ const TIER_ICONS: Record<string, string> = {
         </div>
         <div *ngIf="rewards$ | async as rewards">
           <dojo-empty-state *ngIf="rewards.length === 0"
-            icon="🎁" title="No rewards available yet"
+            icon="gift" title="No rewards available yet"
             subtitle="Your dojo admin will add rewards to this catalogue.">
           </dojo-empty-state>
           <div class="rewards-grid" *ngIf="rewards.length > 0">
             <div *ngFor="let r of rewards" class="reward-card"
               [class.reward-card--locked]="acct.points < r.pointsCost">
-              <div class="reward-icon">{{ rewardIcon(r.type) }}</div>
+              <div class="reward-icon"><dojo-icon [name]="rewardIcon(r.type)" [size]="22"></dojo-icon></div>
               <div class="reward-body">
                 <div class="reward-name">{{ r.name }}</div>
                 <div class="text-muted text-sm">{{ r.description }}</div>
@@ -126,7 +127,7 @@ const TIER_ICONS: Record<string, string> = {
         <div class="card__header"><span class="card__title">Points History</span></div>
         <div *ngIf="transactions$ | async as txs">
           <dojo-empty-state *ngIf="txs.length === 0"
-            icon="📋" title="No transactions yet"
+            icon="clipboard" title="No transactions yet"
             subtitle="Points earned and redeemed will appear here.">
           </dojo-empty-state>
           <table *ngIf="txs.length > 0">
@@ -159,7 +160,7 @@ const TIER_ICONS: Record<string, string> = {
     <ng-template #noAccount>
       <div class="card">
         <div class="card__body" style="text-align:center;padding:48px">
-          <div style="font-size:48px;margin-bottom:16px">⭐</div>
+          <div style="margin-bottom:16px;display:flex;justify-content:center;color:var(--accent)"><dojo-icon name="star" [size]="48" [strokeWidth]="1.5"></dojo-icon></div>
           <div style="font-size:18px;font-weight:700;margin-bottom:8px">Start earning today</div>
           <div class="text-muted">Your loyalty account is created automatically when you
             first attend a class.</div>
@@ -209,13 +210,13 @@ export class LoyaltyComponent implements OnInit {
   rewards$!:      Observable<LoyaltyReward[]>;
   redeeming       = signal(false);
 
-  earningRules = [
-    { icon: '✓',  label: 'Attend a class',     points: 10  },
-    { icon: '⏱',  label: 'Late attendance',     points: 5   },
-    { icon: '🔄',  label: 'Membership renewal',  points: 100 },
-    { icon: '👥',  label: 'Refer a friend',       points: 200 },
-    { icon: '🥋',  label: 'Belt promotion',       points: 150 },
-    { icon: '🎓',  label: 'Attend a seminar',     points: 50  },
+  earningRules: { icon: IconName; label: string; points: number }[] = [
+    { icon: 'check',    label: 'Attend a class',     points: 10  },
+    { icon: 'calendar', label: 'Late attendance',     points: 5   },
+    { icon: 'refresh',  label: 'Membership renewal',  points: 100 },
+    { icon: 'users',    label: 'Refer a friend',       points: 200 },
+    { icon: 'belt',     label: 'Belt promotion',       points: 150 },
+    { icon: 'graduation', label: 'Attend a seminar',   points: 50  },
   ];
 
   ngOnInit() {
@@ -227,7 +228,7 @@ export class LoyaltyComponent implements OnInit {
   }
 
   tierColor  = (t: string) => LOYALTY_TIER_COLORS[t] ?? '#888';
-  tierIcon   = (t: string) => TIER_ICONS[t] ?? '⭐';
+  tierIcon   = (t: string): IconName => TIER_ICONS[t] ?? 'star';
 
   nextTier(current: string): { name: string; threshold: number } | null {
     const idx = TIER_ORDER.indexOf(current);
@@ -245,12 +246,12 @@ export class LoyaltyComponent implements OnInit {
     return Math.min(100, Math.round(progress / range * 100));
   }
 
-  rewardIcon(type: string): string {
-    const map: Record<string, string> = {
-      discount:    '💸', free_class: '🎟',
-      merchandise: '👕', custom:     '🎁',
+  rewardIcon(type: string): IconName {
+    const map: Record<string, IconName> = {
+      discount:    'money', free_class: 'ticket',
+      merchandise: 'shirt', custom:     'gift',
     };
-    return map[type] ?? '🎁';
+    return map[type] ?? 'gift';
   }
 
   async redeem(acct: LoyaltyAccount, reward: LoyaltyReward) {

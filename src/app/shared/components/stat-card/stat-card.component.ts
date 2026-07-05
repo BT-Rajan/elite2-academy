@@ -1,6 +1,7 @@
 import { Component, Input, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { IconComponent, IconName } from '../icon/icon.component';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  StatCardComponent — a metric tile. Plain by default (matches every
@@ -14,7 +15,7 @@ import { RouterLink } from '@angular/router';
 @Component({
   selector: 'dojo-stat-card',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, IconComponent],
   template: `
     <a *ngIf="link" [routerLink]="link" class="stat-card stat-card--action">
       <ng-container *ngTemplateOutlet="body"></ng-container>
@@ -29,7 +30,7 @@ import { RouterLink } from '@angular/router';
     </div>
 
     <ng-template #body>
-      <div class="stat-icon">{{ icon }}</div>
+      <div class="stat-icon"><dojo-icon [name]="icon" [size]="24"></dojo-icon></div>
       <div class="stat-body">
         <div class="stat-value">{{ value }}</div>
         <div class="stat-label">{{ label }}</div>
@@ -56,7 +57,7 @@ import { RouterLink } from '@angular/router';
   `]
 })
 export class StatCardComponent {
-  @Input() icon = '📊';
+  @Input() icon: IconName = 'chart';
   @Input() value: string | number = 0;
   @Input() label = '';
   @Input() sub?: string;

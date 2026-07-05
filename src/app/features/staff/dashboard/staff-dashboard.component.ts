@@ -47,7 +47,7 @@ const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
         </div>
         <div *ngIf="schedules$ | async as schedules; else cardLoading">
           <dojo-empty-state *ngIf="todaysClasses(schedules).length === 0"
-            icon="📅" title="No classes today" subtitle="Check back on a class day.">
+            icon="calendar" title="No classes today" subtitle="Check back on a class day.">
           </dojo-empty-state>
           <table *ngIf="todaysClasses(schedules).length > 0">
             <thead><tr><th>Class</th><th>Time</th><th>Location</th></tr></thead>
@@ -67,7 +67,7 @@ const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
         <div class="card__header"><span class="card__title">Recent Sessions</span></div>
         <div *ngIf="sessions$ | async as sessions; else cardLoading">
           <dojo-empty-state *ngIf="sessions.length === 0"
-            icon="🥋" title="No sessions logged yet" subtitle="">
+            icon="belt" title="No sessions logged yet" subtitle="">
           </dojo-empty-state>
           <table *ngIf="sessions.length > 0">
             <thead><tr><th>Class</th><th>Date</th><th>Status</th></tr></thead>

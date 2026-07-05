@@ -1,6 +1,7 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Belt, CurriculumTrack } from '../../../core/models';
+import { IconComponent, IconName } from '../icon/icon.component';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  RoadmapComponent — presentational curriculum roadmap table. Shows every
@@ -13,7 +14,7 @@ import { Belt, CurriculumTrack } from '../../../core/models';
 @Component({
   selector: 'dojo-roadmap',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, IconComponent],
   template: `
     <div class="roadmap">
       <div *ngFor="let b of belts; let last = last" class="roadmap-row"
@@ -30,9 +31,9 @@ import { Belt, CurriculumTrack } from '../../../core/models';
               <span *ngIf="b.id === currentBeltId" class="here-badge">You are here</span>
             </span>
             <span class="roadmap-meta">
-              <span *ngIf="b.kickboxingLevel">🥊 {{ b.kickboxingLevel }}</span>
-              <span *ngIf="b.bjjStripeLabel">🥋 {{ b.bjjStripeLabel }}</span>
-              <span *ngIf="b.seminarPointsRequired">🎓 {{ b.seminarPointsRequired }} seminar pts</span>
+              <span *ngIf="b.kickboxingLevel"><dojo-icon name="training" [size]="13"></dojo-icon> {{ b.kickboxingLevel }}</span>
+              <span *ngIf="b.bjjStripeLabel"><dojo-icon name="belt" [size]="13"></dojo-icon> {{ b.bjjStripeLabel }}</span>
+              <span *ngIf="b.seminarPointsRequired"><dojo-icon name="graduation" [size]="13"></dojo-icon> {{ b.seminarPointsRequired }} seminar pts</span>
               <span class="expand-icon">{{ expanded.has(b.id) ? '▾' : '▸' }}</span>
             </span>
           </button>
@@ -40,7 +41,7 @@ import { Belt, CurriculumTrack } from '../../../core/models';
           <div *ngIf="expanded.has(b.id) && b.syllabus?.length" class="roadmap-syllabus">
             <div *ngFor="let track of trackOrder" class="syllabus-track">
               <ng-container *ngIf="itemFor(b, track) as item">
-                <div class="syllabus-icon">{{ trackIcon[track] }}</div>
+                <div class="syllabus-icon"><dojo-icon [name]="trackIcon[track]" [size]="16"></dojo-icon></div>
                 <div>
                   <div class="syllabus-title">{{ trackLabel[track] }} — {{ item.title }}</div>
                   <div class="syllabus-desc">{{ item.description }}</div>
@@ -81,7 +82,7 @@ export class RoadmapComponent {
 
   expanded = new Set<string>();
   trackOrder: CurriculumTrack[] = ['striking', 'grappling', 'selfdefense'];
-  trackIcon: Record<CurriculumTrack, string> = { striking: '🥊', grappling: '🤼', selfdefense: '🛡️' };
+  trackIcon: Record<CurriculumTrack, IconName> = { striking: 'training', grappling: 'belt', selfdefense: 'shield' };
   trackLabel: Record<CurriculumTrack, string> = { striking: 'Striking', grappling: 'Grappling', selfdefense: 'Self-Defense' };
 
   toggle(beltId: string) {

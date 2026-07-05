@@ -1,6 +1,7 @@
 export * from './components/avatar/avatar.component';
 export * from './components/badge/badge.component';
 export * from './components/empty-state/empty-state.component';
+export * from './components/icon/icon.component';
 export * from './components/loading/loading.component';
 export * from './components/page-header/page-header.component';
 export * from './components/skill-bar/skill-bar.component';

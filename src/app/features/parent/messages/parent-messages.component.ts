@@ -30,7 +30,7 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
 
         <div *ngIf="threads$ | async as threads">
           <dojo-empty-state *ngIf="threads.length === 0"
-            icon="💬" title="No conversations yet"
+            icon="message" title="No conversations yet"
             subtitle="Your coach will start a conversation when they have updates.">
           </dojo-empty-state>
 
@@ -68,7 +68,7 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
           <div class="messages-scroll">
             <ng-container *ngIf="messages$ | async as msgs">
               <dojo-empty-state *ngIf="msgs.length === 0"
-                icon="👋" title="Start the conversation"
+                icon="wave" title="Start the conversation"
                 subtitle="Send a message to your child's coach.">
               </dojo-empty-state>
 
@@ -98,7 +98,7 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
         </ng-container>
 
         <ng-template #noThread>
-          <dojo-empty-state icon="💬"
+          <dojo-empty-state icon="message"
             title="Select a conversation"
             subtitle="Your conversations with coaches appear on the left.">
           </dojo-empty-state>

@@ -19,6 +19,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
 import { RoadmapComponent } from '../../../shared/components/roadmap/roadmap.component';
 import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
 import { ToastService } from '../../../core/services/toast.service';
+import { IconComponent, IconName } from '../../../shared/components/icon/icon.component';
 
 type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments';
 
@@ -27,7 +28,7 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
   standalone: true,
   imports: [CommonModule, AsyncPipe, DatePipe, FormsModule, RouterLink,
             PageHeaderComponent, AvatarComponent, SkillBarComponent,
-            BadgeComponent, EmptyStateComponent, RoadmapComponent, TimeAgoPipe],
+            BadgeComponent, EmptyStateComponent, RoadmapComponent, TimeAgoPipe, IconComponent],
   template: `
     <a [routerLink]="[basePath(), 'students']" class="btn btn--ghost btn--sm mb-4">← Back to students</a>
 
@@ -39,7 +40,7 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
           <div style="flex:1">
             <h2 style="font-size:22px;font-weight:700;margin-bottom:4px">{{ s.firstName }} {{ s.lastName }}</h2>
             <div class="text-muted" style="margin-bottom:8px">{{ s.disciplineName || 'No discipline' }} · Age {{ age(s) }} · Enrolled {{ s.enrolledAt | date:'MMM y' }}</div>
-            <span class="badge badge--accent" style="font-size:13px;padding:4px 12px">🥋 {{ s.beltName || 'No belt' }}</span>
+            <span class="badge badge--accent" style="font-size:13px;padding:4px 12px;display:inline-flex;align-items:center;gap:4px"><dojo-icon name="belt" [size]="13"></dojo-icon> {{ s.beltName || 'No belt' }}</span>
           </div>
         </div>
       </div>
@@ -48,7 +49,7 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
       <div class="tabs mb-4">
         <button *ngFor="let t of tabs" class="tab-btn"
           [class.active]="activeTab() === t.key" (click)="activeTab.set(t.key)">
-          {{ t.icon }} {{ t.label }}
+          <dojo-icon [name]="t.icon" [size]="16"></dojo-icon> {{ t.label }}
         </button>
       </div>
 
@@ -58,7 +59,7 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
           <div class="card">
             <div class="card__header"><span class="card__title">Recent Comments</span></div>
             <div *ngIf="comments$ | async as comments">
-              <dojo-empty-state *ngIf="comments.length === 0" icon="💬" title="No comments yet"></dojo-empty-state>
+              <dojo-empty-state *ngIf="comments.length === 0" icon="message" title="No comments yet"></dojo-empty-state>
               <div *ngFor="let c of comments | slice:0:3" style="padding:12px 16px;border-bottom:1px solid var(--border)">
                 <div style="font-size:13px;margin-bottom:4px">{{ c.comment }}</div>
                 <div class="text-muted text-sm">{{ c.coachName }} · {{ c.createdAt | timeAgo }}</div>
@@ -68,7 +69,7 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
           <div class="card">
             <div class="card__header"><span class="card__title">Objectives</span></div>
             <div *ngIf="objectives$ | async as objs">
-              <dojo-empty-state *ngIf="objs.length === 0" icon="🎯" title="No objectives set"></dojo-empty-state>
+              <dojo-empty-state *ngIf="objs.length === 0" icon="target" title="No objectives set"></dojo-empty-state>
               <div *ngFor="let o of objs" style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border)">
                 <button class="btn btn--sm" [class.btn--primary]="o.isComplete" [class.btn--secondary]="!o.isComplete"
                   (click)="!o.isComplete && completeObjective(s.id, o.id)">
@@ -93,7 +94,7 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
           <div class="card__header">
             <span class="card__title">Skill Assessment</span>
             <button class="btn btn--primary btn--sm" (click)="savingSkills.set(!savingSkills())">
-              {{ savingSkills() ? 'Cancel' : '✏ Update Skills' }}
+              {{ savingSkills() ? "Cancel" : "Update Skills" }}
             </button>
           </div>
           <div class="card__body">
@@ -132,7 +133,7 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
         <div class="card">
           <div class="card__header"><span class="card__title">Attendance History</span></div>
           <div *ngIf="attendance$ | async as records">
-            <dojo-empty-state *ngIf="records.length === 0" icon="📅" title="No attendance records"></dojo-empty-state>
+            <dojo-empty-state *ngIf="records.length === 0" icon="calendar" title="No attendance records"></dojo-empty-state>
             <div *ngIf="records.length > 0">
               <div style="display:flex;gap:12px;padding:12px 20px;border-bottom:1px solid var(--border);flex-wrap:wrap">
                 <div *ngFor="let stat of attendanceStats(records)"
@@ -173,7 +174,7 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
           <div class="card">
             <div class="card__header"><span class="card__title">Belt History</span></div>
             <div *ngIf="beltHistory$ | async as history">
-              <dojo-empty-state *ngIf="history.length === 0" icon="🥋" title="No belt awards yet"></dojo-empty-state>
+              <dojo-empty-state *ngIf="history.length === 0" icon="belt" title="No belt awards yet"></dojo-empty-state>
               <div *ngFor="let b of history" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border)">
                 <div style="width:14px;height:14px;border-radius:50%;border:2px solid var(--border)" [style.background]="b.beltId"></div>
                 <div style="flex:1">
@@ -199,7 +200,7 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
                 <label>Notes</label>
                 <textarea class="textarea" [(ngModel)]="newBelt.notes" placeholder="Achievement notes…"></textarea>
               </div>
-              <button class="btn btn--primary btn--full" (click)="awardBelt(s)">🥋 Award Belt</button>
+              <button class="btn btn--primary btn--full" (click)="awardBelt(s)"><dojo-icon name="belt" [size]="14"></dojo-icon> Award Belt</button>
             </div>
           </div>
         </div>
@@ -235,15 +236,15 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
               </div>
 
               <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
-                <button class="btn btn--secondary btn--sm" (click)="awardStripe(s.id)">🥋 +1 BJJ Stripe</button>
+                <button class="btn btn--secondary btn--sm" (click)="awardStripe(s.id)"><dojo-icon name="belt" [size]="14"></dojo-icon> +1 BJJ Stripe</button>
                 <input class="input" type="number" [(ngModel)]="seminarPointsToAward" style="width:80px" placeholder="Pts">
                 <input class="input" [(ngModel)]="seminarPointsReason" placeholder="Reason (e.g. Weapons seminar)" style="flex:1;min-width:160px">
-                <button class="btn btn--secondary btn--sm" (click)="awardSeminarPoints(s.id)">🎓 Award Points</button>
+                <button class="btn btn--secondary btn--sm" (click)="awardSeminarPoints(s.id)"><dojo-icon name="graduation" [size]="14"></dojo-icon> Award Points</button>
               </div>
 
               <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
                 <button *ngIf="r.isReady" class="btn btn--primary btn--full" (click)="promote(s)">
-                  🎉 Promote to Next Belt
+                  <dojo-icon name="party" [size]="14"></dojo-icon> Promote to Next Belt
                 </button>
                 <ng-container *ngIf="!r.isReady">
                   <div class="text-muted text-sm mb-2">Not all requirements are met yet.</div>
@@ -251,7 +252,7 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
                     <textarea class="textarea" [(ngModel)]="overrideNotes" rows="2"
                       placeholder="Reason for promoting despite unmet requirements (required)…"></textarea>
                     <button class="btn btn--danger btn--full mt-2" [disabled]="!overrideNotes.trim()" (click)="promote(s, true)">
-                      ⚠️ Head Coach Override — Promote Anyway
+                      <dojo-icon name="warning" [size]="14"></dojo-icon> Head Coach Override — Promote Anyway
                     </button>
                   </ng-container>
                 </ng-container>
@@ -283,7 +284,7 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
 
               <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
                 <div *ngIf="evaluations$ | async as evals">
-                  <dojo-empty-state *ngIf="evals.length === 0" icon="📋" title="No evaluations yet"></dojo-empty-state>
+                  <dojo-empty-state *ngIf="evals.length === 0" icon="clipboard" title="No evaluations yet"></dojo-empty-state>
                   <div *ngFor="let e of evals" style="padding:10px 0;border-bottom:1px solid var(--border)">
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
                       <strong style="font-size:13px">{{ trackLabel[e.track] }} — {{ e.beltName }}</strong>
@@ -322,7 +323,7 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
         <div class="card">
           <div class="card__header"><span class="card__title">Curriculum Roadmap</span></div>
           <div class="card__body" *ngIf="roadmap$ | async as roadmap">
-            <dojo-empty-state *ngIf="roadmap.length === 0" icon="🗺️" title="No roadmap configured yet"
+            <dojo-empty-state *ngIf="roadmap.length === 0" icon="map" title="No roadmap configured yet"
               subtitle="Set up belts and syllabus for this discipline under Admin → Curriculum."></dojo-empty-state>
             <dojo-roadmap *ngIf="roadmap.length" [belts]="roadmap" [currentBeltId]="s.currentBeltId"></dojo-roadmap>
           </div>
@@ -346,7 +347,7 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
         <div class="card">
           <div class="card__header"><span class="card__title">All Comments</span></div>
           <div *ngIf="comments$ | async as comments">
-            <dojo-empty-state *ngIf="comments.length === 0" icon="💬" title="No comments yet"
+            <dojo-empty-state *ngIf="comments.length === 0" icon="message" title="No comments yet"
               subtitle="Comments you write here are visible to parents."></dojo-empty-state>
             <div *ngFor="let c of comments" style="padding:16px 20px;border-bottom:1px solid var(--border)">
               <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
@@ -430,13 +431,13 @@ export class StudentDetailComponent implements OnInit {
   skillLabels = SKILL_LABELS;
   age = (s: Student) => s.dob ? calcAge(new Date(s.dob)) : '—';
 
-  tabs = [
-    { key: 'overview'   as Tab, icon: '⊞',  label: 'Overview' },
-    { key: 'skills'     as Tab, icon: '📊',  label: 'Skills' },
-    { key: 'attendance' as Tab, icon: '✓',   label: 'Attendance' },
-    { key: 'belt'       as Tab, icon: '🥋',  label: 'Belt' },
-    { key: 'roadmap'    as Tab, icon: '🗺️',  label: 'Roadmap' },
-    { key: 'comments'   as Tab, icon: '💬',  label: 'Comments' },
+  tabs: { key: Tab; icon: IconName; label: string }[] = [
+    { key: 'overview'   as Tab, icon: 'home',  label: 'Overview' },
+    { key: 'skills'     as Tab, icon: 'chart' as IconName,   label: 'Skills' },
+    { key: 'attendance' as Tab, icon: 'check' as IconName,   label: 'Attendance' },
+    { key: 'belt'       as Tab, icon: 'belt' as IconName,    label: 'Belt' },
+    { key: 'roadmap'    as Tab, icon: 'map' as IconName,     label: 'Roadmap' },
+    { key: 'comments'   as Tab, icon: 'message' as IconName, label: 'Comments' },
   ];
 
   private studentId = '';

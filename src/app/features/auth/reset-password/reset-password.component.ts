@@ -3,15 +3,16 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
+import { IconComponent } from '../../../shared/components/icon/icon.component';
 
 @Component({
   selector: 'app-reset-password',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, IconComponent],
   template: `
     <div class="auth-page">
       <div class="auth-card">
-        <div class="auth-logo">🔑</div>
+        <div class="auth-logo"><dojo-icon name="key" [size]="28"></dojo-icon></div>
         <h1 class="auth-title">Reset Password</h1>
         <p class="auth-sub">We'll send you a reset link</p>
 

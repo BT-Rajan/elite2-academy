@@ -43,7 +43,7 @@ import { ToastService } from '../../../core/services/toast.service';
         </div>
 
         <div *ngIf="threads$ | async as threads">
-          <dojo-empty-state *ngIf="threads.length === 0" icon="💬" title="No conversations yet"
+          <dojo-empty-state *ngIf="threads.length === 0" icon="message" title="No conversations yet"
             subtitle="Start a conversation with a parent."></dojo-empty-state>
           <div *ngFor="let t of threads"
             class="thread-item" [class.active]="activeThread()?.id === t.id"
@@ -71,7 +71,7 @@ import { ToastService } from '../../../core/services/toast.service';
           </div>
           <div class="messages-scroll" #scrollRef>
             <ng-container *ngIf="messages$ | async as msgs">
-              <dojo-empty-state *ngIf="msgs.length === 0" icon="💬" title="No messages yet"
+              <dojo-empty-state *ngIf="msgs.length === 0" icon="message" title="No messages yet"
                 subtitle="Say hello to the parent!"></dojo-empty-state>
               <div *ngFor="let m of msgs" class="msg-bubble-wrap" [class.mine]="m.fromUid === myUid()">
                 <div class="msg-bubble">
@@ -92,7 +92,7 @@ import { ToastService } from '../../../core/services/toast.service';
           </div>
         </ng-container>
         <ng-template #noThread>
-          <dojo-empty-state icon="💬" title="Select a conversation"
+          <dojo-empty-state icon="message" title="Select a conversation"
             subtitle="Choose a thread from the left to start messaging.">
           </dojo-empty-state>
         </ng-template>

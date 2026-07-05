@@ -4,35 +4,36 @@ import { CommonModule } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { AvatarComponent } from '../../shared/components/avatar/avatar.component';
+import { IconComponent } from '../../shared/components/icon/icon.component';
 
 @Component({
   selector: 'app-parent-shell',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule, AvatarComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule, AvatarComponent, IconComponent],
   template: `
     <div class="shell">
       <aside class="sidebar">
-        <div class="sidebar__logo">🥋 <span>Parent Portal</span></div>
+        <div class="sidebar__logo"><dojo-icon name="belt" [size]="20"></dojo-icon> <span>Parent Portal</span></div>
         <nav class="sidebar__nav">
           <a routerLink="/parent/dashboard"     routerLinkActive="active" class="nav-item">
-            <span class="nav-icon">⊞</span> Dashboard
+            <span class="nav-icon"><dojo-icon name="home"></dojo-icon></span> Dashboard
           </a>
           <a routerLink="/parent/progress"      routerLinkActive="active" class="nav-item">
-            <span class="nav-icon">📈</span> My Child
+            <span class="nav-icon"><dojo-icon name="trending"></dojo-icon></span> My Child
           </a>
           <a routerLink="/parent/messages"      routerLinkActive="active" class="nav-item">
-            <span class="nav-icon">💬</span> Messages
+            <span class="nav-icon"><dojo-icon name="message"></dojo-icon></span> Messages
             <span *ngIf="unreadMessages() > 0" class="nav-badge">{{ unreadMessages() }}</span>
           </a>
           <a routerLink="/parent/loyalty"       routerLinkActive="active" class="nav-item">
-            <span class="nav-icon">⭐</span> Loyalty Points
+            <span class="nav-icon"><dojo-icon name="star"></dojo-icon></span> Loyalty Points
           </a>
           <a routerLink="/parent/notifications" routerLinkActive="active" class="nav-item">
-            <span class="nav-icon">🔔</span> Notifications
+            <span class="nav-icon"><dojo-icon name="bell"></dojo-icon></span> Notifications
             <span *ngIf="unreadNotifs() > 0" class="nav-badge">{{ unreadNotifs() }}</span>
           </a>
           <a routerLink="/parent/profile" routerLinkActive="active" class="nav-item">
-            <span class="nav-icon">👤</span> My Profile
+            <span class="nav-icon"><dojo-icon name="user"></dojo-icon></span> My Profile
           </a>
         </nav>
         <div class="sidebar__footer">
@@ -46,7 +47,7 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
             </div>
           </div>
           <button class="sidebar-logout" (click)="auth.logout()">
-            <span>🚪</span><span>Sign out</span>
+            <dojo-icon name="log-out"></dojo-icon><span>Sign out</span>
           </button>
         </div>
       </aside>

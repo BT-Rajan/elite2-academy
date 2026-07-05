@@ -25,7 +25,7 @@ import { calcAge } from '../../../core/utils';
 
     <ng-container *ngIf="students$ | async as all; else loadingTpl">
       <dojo-empty-state *ngIf="all.length === 0"
-        icon="🧒" title="No students yet" subtitle="Students will appear here once enrolled.">
+        icon="child" title="No students yet" subtitle="Students will appear here once enrolled.">
       </dojo-empty-state>
 
       <div class="card" *ngIf="all.length > 0">

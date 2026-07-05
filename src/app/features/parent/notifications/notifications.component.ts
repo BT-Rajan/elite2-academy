@@ -7,15 +7,16 @@ import { Notification } from '../../../core/models';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
+import { IconComponent, IconName } from '../../../shared/components/icon/icon.component';
 
-const NOTIF_ICONS: Record<string, string> = {
-  message: '💬', attendance: '✓', belt: '🥋', loyalty: '⭐', system: '🔔',
+const NOTIF_ICONS: Record<string, IconName> = {
+  message: 'message', attendance: 'check', belt: 'belt', loyalty: 'star', system: 'bell',
 };
 
 @Component({
   selector: 'app-notifications',
   standalone: true,
-  imports: [CommonModule, AsyncPipe, DatePipe, PageHeaderComponent, EmptyStateComponent, TimeAgoPipe],
+  imports: [CommonModule, AsyncPipe, DatePipe, PageHeaderComponent, EmptyStateComponent, TimeAgoPipe, IconComponent],
   template: `
     <dojo-page-header title="Notifications">
       <button class="btn btn--secondary btn--sm" (click)="markAll()">Mark all read</button>
@@ -24,12 +25,12 @@ const NOTIF_ICONS: Record<string, string> = {
     <div class="card">
       <div *ngIf="notifs$ | async as notifs">
         <dojo-empty-state *ngIf="notifs.length === 0"
-          icon="🔔" title="All caught up!" subtitle="No notifications yet.">
+          icon="bell" title="All caught up!" subtitle="No notifications yet.">
         </dojo-empty-state>
         <div *ngFor="let n of notifs"
           class="notif-row" [class.unread]="!n.isRead"
           (click)="read(n)">
-          <div class="notif-icon">{{ icon(n.type) }}</div>
+          <div class="notif-icon"><dojo-icon [name]="icon(n.type)"></dojo-icon></div>
           <div style="flex:1;min-width:0">
             <div style="font-weight:600;font-size:13px">{{ n.title }}</div>
             <div class="text-muted text-sm" style="margin-top:2px">{{ n.body }}</div>
@@ -59,7 +60,7 @@ export class NotificationsComponent implements OnInit {
   private ns   = inject(NotificationService);
 
   notifs$!: Observable<Notification[]>;
-  icon = (type: string) => NOTIF_ICONS[type] ?? '🔔';
+  icon = (type: string): IconName => NOTIF_ICONS[type] ?? 'bell';
 
   ngOnInit() {
     this.notifs$ = this.ns.forUser$(this.auth.currentUser()!.uid);

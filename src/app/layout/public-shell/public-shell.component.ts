@@ -2,18 +2,19 @@ import { Component, inject, signal, HostListener } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
+import { IconComponent } from '../../shared/components/icon/icon.component';
 
 @Component({
   selector: 'app-public-shell',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule, IconComponent],
   template: `
     <div class="public-layout">
       <!-- Top nav -->
       <nav class="public-nav" [class.scrolled]="scrolled()">
         <div class="public-nav__inner">
           <a routerLink="/" class="public-nav__logo">
-            🥋 <span>Dojo Platform</span>
+            <dojo-icon name="belt" [size]="20"></dojo-icon> <span>Dojo Platform</span>
           </a>
 
           <!-- Desktop links -->
@@ -42,8 +43,8 @@ import { AuthService } from '../../core/services/auth.service';
 
         <!-- Mobile dropdown -->
         <div class="mobile-menu" *ngIf="menuOpen()">
-          <a routerLink="/public/schedule" (click)="menuOpen.set(false)">📅 Schedule</a>
-          <a routerLink="/public/pricing"  (click)="menuOpen.set(false)">💳 Pricing</a>
+          <a routerLink="/public/schedule" (click)="menuOpen.set(false)"><dojo-icon name="calendar" [size]="14"></dojo-icon> Schedule</a>
+          <a routerLink="/public/pricing"  (click)="menuOpen.set(false)"><dojo-icon name="ticket" [size]="14"></dojo-icon> Pricing</a>
           <a routerLink="/auth/login"      (click)="menuOpen.set(false)">Sign in</a>
           <a routerLink="/auth/signup" class="btn btn--primary btn--full" (click)="menuOpen.set(false)">Get started</a>
         </div>
@@ -58,7 +59,7 @@ import { AuthService } from '../../core/services/auth.service';
       <footer class="public-footer">
         <div class="public-footer__inner">
           <div class="public-footer__brand">
-            <div style="font-size:20px;font-weight:700">🥋 Dojo Platform</div>
+            <div style="font-size:20px;font-weight:700;display:flex;align-items:center;gap:8px"><dojo-icon name="belt" [size]="20"></dojo-icon> Dojo Platform</div>
             <div style="font-size:13px;color:var(--text-muted);margin-top:4px">
               Built for martial arts academies
             </div>

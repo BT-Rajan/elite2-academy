@@ -3,36 +3,37 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
 import { AvatarComponent } from '../../shared/components/avatar/avatar.component';
+import { IconComponent, IconName } from '../../shared/components/icon/icon.component';
 
-const NAV = [
-  { path: '/staff/dashboard', icon: '⊞', label: 'Dashboard' },
-  { path: '/staff/students',  icon: '🧒', label: 'Students' },
-  { path: '/staff/schedule',  icon: '📅', label: 'Schedule' },
-  { path: '/staff/notifications', icon: '🔔', label: 'Notifications' },
-  { path: '/staff/profile',   icon: '👤', label: 'My Profile' },
+const NAV: { path: string; icon: IconName; label: string; badge?: number }[] = [
+  { path: '/staff/dashboard', icon: 'home', label: 'Dashboard' },
+  { path: '/staff/students',  icon: 'child', label: 'Students' },
+  { path: '/staff/schedule',  icon: 'calendar', label: 'Schedule' },
+  { path: '/staff/notifications', icon: 'bell', label: 'Notifications' },
+  { path: '/staff/profile',   icon: 'user', label: 'My Profile' },
 ];
 
 @Component({
   selector: 'app-staff-shell',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule, AvatarComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule, AvatarComponent, IconComponent],
   template: `
     <div class="shell">
       <aside class="sidebar">
-        <div class="sidebar__logo">🥋 <span>Staff Portal</span></div>
+        <div class="sidebar__logo"><dojo-icon name="belt" [size]="20"></dojo-icon> <span>Staff Portal</span></div>
         <nav class="sidebar__nav">
           <a *ngFor="let item of nav"
              [routerLink]="item.path"
              routerLinkActive="active"
              class="nav-item">
-            <span class="nav-icon">{{ item.icon }}</span>
+            <span class="nav-icon"><dojo-icon [name]="item.icon"></dojo-icon></span>
             {{ item.label }}
             <span *ngIf="item.badge" class="nav-badge">{{ item.badge }}</span>
           </a>
         </nav>
         <div class="sidebar__footer">
           <div class="nav-item" (click)="auth.logout()">
-            <span class="nav-icon">🚪</span> Sign out
+            <span class="nav-icon"><dojo-icon name="log-out"></dojo-icon></span> Sign out
           </div>
         </div>
       </aside>
@@ -54,5 +55,5 @@ const NAV = [
 export class StaffShellComponent {
   auth = inject(AuthService);
   user = computed(() => this.auth.currentUser());
-  nav  = NAV as any[];
+  nav  = NAV;
 }
