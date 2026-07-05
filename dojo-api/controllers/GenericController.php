@@ -385,14 +385,19 @@ class GenericController {
     // PATCH /users/:uid/approve
     // Approving a pending 'admin' signup requires a Head Coach or existing
     // Admin. Any other pending role (coach/parent/staff) can be approved by
-    // staff or admin.
+    // staff or admin. Also doubles as "reinstate" for a previously rejected
+    // account -- a rejection isn't a permanent lock-out, just a decision
+    // that can be revisited (and there'd otherwise be no way back in: the
+    // account can't re-register with the same email either).
     public function approveUser(string $uid): never {
         $auth = AuthMiddleware::require();
         $stmt = $this->db->prepare("SELECT role, approval_status FROM users WHERE uid = ? AND dojo_id = ?");
         $stmt->execute([$uid, Tenant::dojoId($auth)]);
         $target = $stmt->fetch();
         if (!$target) Response::notFound('User not found.');
-        if ($target['approval_status'] !== 'pending') Response::error('User is not pending approval.', 422);
+        if (!in_array($target['approval_status'], ['pending', 'rejected'], true)) {
+            Response::error('User is already approved.', 422);
+        }
 
         if ($target['role'] === 'admin') {
             AuthMiddleware::requireHeadCoach($auth);
@@ -403,7 +408,7 @@ class GenericController {
         $this->db->prepare("
             UPDATE users SET approval_status = 'approved', approved_by = ?, approved_at = NOW()
             WHERE uid = ?")->execute([$auth['uid'], $uid]);
-        Audit::log($this->db, $auth, 'user.approve', 'user', $uid, ['role' => $target['role']]);
+        Audit::log($this->db, $auth, 'user.approve', 'user', $uid, ['role' => $target['role'], 'wasRejected' => $target['approval_status'] === 'rejected']);
 
         $this->db->prepare("INSERT INTO notifications (uid, type, title, body) VALUES (?,?,?,?)")
             ->execute([$uid, 'system', 'Account approved', 'Your account has been approved. You now have full access.']);

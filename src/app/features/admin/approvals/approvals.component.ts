@@ -75,44 +75,53 @@ type Tab = 'pending' | 'history';
               </td>
               <td class="text-muted" [title]="u.createdAt | date:'medium'">{{ u.createdAt | timeAgo }}</td>
               <td style="text-align:right;white-space:nowrap">
-                <ng-container *ngIf="u.approvalStatus === 'pending'; else lifecycleActions">
-                  <ng-container *ngIf="canActOnPending(u); else noPermission">
-                    <button class="btn btn--secondary btn--sm" [disabled]="busy() === u.uid"
-                            (click)="reject(u)">
-                      <dojo-icon name="close" [size]="14"></dojo-icon> Reject
-                    </button>
-                    <button class="btn btn--primary btn--sm" style="margin-left:8px" [disabled]="busy() === u.uid"
-                            (click)="approve(u)">
-                      <dojo-icon name="check" [size]="14"></dojo-icon> Approve
-                    </button>
+                <ng-container [ngSwitch]="true">
+                  <ng-container *ngSwitchCase="u.approvalStatus === 'pending'">
+                    <ng-container *ngIf="canActOnPending(u); else noPermission">
+                      <button class="btn btn--secondary btn--sm" [disabled]="busy() === u.uid"
+                              (click)="reject(u)">
+                        <dojo-icon name="close" [size]="14"></dojo-icon> Reject
+                      </button>
+                      <button class="btn btn--primary btn--sm" style="margin-left:8px" [disabled]="busy() === u.uid"
+                              (click)="approve(u)">
+                        <dojo-icon name="check" [size]="14"></dojo-icon> Approve
+                      </button>
+                    </ng-container>
                   </ng-container>
+
+                  <ng-container *ngSwitchCase="u.approvalStatus === 'rejected'">
+                    <ng-container *ngIf="canActOnPending(u); else noPermission">
+                      <button class="btn btn--primary btn--sm" [disabled]="busy() === u.uid"
+                              (click)="approve(u)">
+                        <dojo-icon name="check" [size]="14"></dojo-icon> Reinstate
+                      </button>
+                    </ng-container>
+                  </ng-container>
+
+                  <ng-container *ngSwitchDefault>
+                    <ng-container *ngIf="canManage(u); else noPermission">
+                      <button *ngIf="u.role === 'coach' && !u.isHeadCoach"
+                              class="btn btn--secondary btn--sm" [disabled]="busy() === u.uid"
+                              (click)="downgrade(u)">
+                        <dojo-icon name="trending" [size]="14"></dojo-icon> Downgrade to Staff
+                      </button>
+                      <button *ngIf="u.isActive === false"
+                              class="btn btn--primary btn--sm" style="margin-left:8px" [disabled]="busy() === u.uid"
+                              (click)="unblock(u)">
+                        <dojo-icon name="check-circle" [size]="14"></dojo-icon> Unblock
+                      </button>
+                      <button *ngIf="u.isActive !== false && !u.isHeadCoach"
+                              class="btn btn--secondary btn--sm" style="margin-left:8px" [disabled]="busy() === u.uid"
+                              (click)="block(u)">
+                        <dojo-icon name="warning" [size]="14"></dojo-icon> Block
+                      </button>
+                    </ng-container>
+                  </ng-container>
+
                   <ng-template #noPermission>
                     <span class="text-muted text-sm">Head Coach or Admin required</span>
                   </ng-template>
                 </ng-container>
-
-                <ng-template #lifecycleActions>
-                  <ng-container *ngIf="canManage(u); else noManagePermission">
-                    <button *ngIf="u.role === 'coach' && u.approvalStatus === 'approved' && !u.isHeadCoach"
-                            class="btn btn--secondary btn--sm" [disabled]="busy() === u.uid"
-                            (click)="downgrade(u)">
-                      <dojo-icon name="trending" [size]="14"></dojo-icon> Downgrade to Staff
-                    </button>
-                    <button *ngIf="u.isActive === false"
-                            class="btn btn--primary btn--sm" style="margin-left:8px" [disabled]="busy() === u.uid"
-                            (click)="unblock(u)">
-                      <dojo-icon name="check-circle" [size]="14"></dojo-icon> Unblock
-                    </button>
-                    <button *ngIf="u.isActive !== false && u.approvalStatus !== 'rejected' && !u.isHeadCoach"
-                            class="btn btn--secondary btn--sm" style="margin-left:8px" [disabled]="busy() === u.uid"
-                            (click)="block(u)">
-                      <dojo-icon name="warning" [size]="14"></dojo-icon> Block
-                    </button>
-                  </ng-container>
-                  <ng-template #noManagePermission>
-                    <span class="text-muted text-sm">Head Coach or Admin required</span>
-                  </ng-template>
-                </ng-template>
               </td>
             </tr>
           </tbody>
@@ -147,8 +156,17 @@ export class PendingApprovalsComponent implements OnInit {
   busy    = signal<string | null>(null);
   loading = signal(true);
 
-  private pending = signal<AccountRecord[]>([]);
-  private history = signal<AccountRecord[]>([]);
+  private allAccounts = signal<AccountRecord[]>([]);
+
+  // Pending derives from the same fetch as history (history$ is already a
+  // superset — every account regardless of status). Two separate calls
+  // used to run here; besides the extra round-trip, GET /users/pending's
+  // SELECT never included approval_status/is_active/is_head_coach, so this
+  // tab's rows had approvalStatus === undefined and silently fell through
+  // to the wrong action branch (Block/Downgrade instead of Approve/Reject).
+  // A single well-shaped source removes both problems at once.
+  pending = computed(() => this.allAccounts().filter(u => u.approvalStatus === 'pending'));
+  history = computed(() => this.allAccounts());
 
   pendingCount = computed(() => this.pending().length);
   visibleRows  = computed(() => this.tab() === 'pending' ? this.pending() : this.history());
@@ -160,11 +178,10 @@ export class PendingApprovalsComponent implements OnInit {
   private load(): void {
     this.loading.set(true);
     const dojoId = this.auth.currentUser()!.dojoId;
-    this.us.pending$(dojoId).subscribe(rows => {
-      this.pending.set(rows);
+    this.us.history$(dojoId).subscribe(rows => {
+      this.allAccounts.set(rows);
       this.loading.set(false);
     });
-    this.us.history$(dojoId).subscribe(rows => this.history.set(rows));
   }
 
   statusLabel(u: AccountRecord): string {
