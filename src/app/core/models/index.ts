@@ -277,7 +277,7 @@ export interface LoyaltyReward {
 export interface Notification {
   id: string;
   uid: string;
-  type: 'message' | 'attendance' | 'belt' | 'loyalty' | 'system';
+  type: 'message' | 'attendance' | 'belt' | 'loyalty' | 'system' | 'achievement';
   title: string;
   body: string;
   isRead: boolean;

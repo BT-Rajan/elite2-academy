@@ -7,3 +7,5 @@ dojo-api/uploads/avatars/*
 !dojo-api/uploads/avatars/.gitkeep
 dojo-api/storage/logs/*
 !dojo-api/storage/logs/.gitkeep
+__pycache__/
+*.pyc

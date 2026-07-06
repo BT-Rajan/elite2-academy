@@ -11,6 +11,7 @@ import { IconComponent, IconName } from '../../../shared/components/icon/icon.co
 
 const NOTIF_ICONS: Record<string, IconName> = {
   message: 'message', attendance: 'check', belt: 'belt', loyalty: 'star', system: 'bell',
+  achievement: 'trophy',
 };
 
 @Component({

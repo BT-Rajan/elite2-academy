@@ -527,7 +527,7 @@ CREATE TABLE IF NOT EXISTS loyalty_rewards (
 CREATE TABLE IF NOT EXISTS notifications (
   id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   uid        VARCHAR(36) NOT NULL,
-  type       ENUM('message','attendance','belt','loyalty','system') NOT NULL,
+  type       ENUM('message','attendance','belt','loyalty','system','achievement') NOT NULL,
   title      VARCHAR(200) NOT NULL,
   body       TEXT NOT NULL,
   is_read    TINYINT(1) NOT NULL DEFAULT 0,
