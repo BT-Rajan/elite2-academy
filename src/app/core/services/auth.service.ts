@@ -29,6 +29,10 @@ export class AuthService {
   async login(email: string, password: string): Promise<void> {
     this.isLoading.set(true);
     try {
+      // A pending/rejected account gets a 403 with a clear message straight
+      // from the backend (AuthController::login()) rather than a 200 —
+      // ApiService surfaces that as a thrown Error, which the login screen
+      // already displays via its existing catch block.
       const res = await this.api.post<{ data: AuthResponse }>('/auth/login', { email, password })
         .toPromise();
       if (!res?.data) throw new Error('No response from server.');
@@ -37,6 +41,11 @@ export class AuthService {
     } finally { this.isLoading.set(false); }
   }
 
+  // Every new signup starts life as approval_status='pending' (enforced
+  // server-side in AuthController::register(), not just this check), so
+  // there's nothing useful to log them into yet -- no session is stored and
+  // no navigation happens here. The signup screen shows a confirmation and
+  // sends them to /auth/login for later, once an admin approves them.
   async signup(
     email: string, password: string, displayName: string,
     role: UserRole, dojoId: string
@@ -47,8 +56,6 @@ export class AuthService {
         email, password, displayName, role, dojoId,
       }).toPromise();
       if (!res?.data) throw new Error('No response from server.');
-      this.storeSession(res.data);
-      this.redirectByRole(res.data.user.role);
     } finally { this.isLoading.set(false); }
   }
 

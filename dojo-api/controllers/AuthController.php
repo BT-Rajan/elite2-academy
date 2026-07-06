@@ -103,6 +103,19 @@ class AuthController {
 
         $limiter->recordSuccess($email);
 
+        // These messages exist in ErrorMessages specifically for this check,
+        // but login() never used them -- meaning a pending/rejected account
+        // could get back a fully valid token (dead everywhere except
+        // /auth/me, since every other endpoint's AuthMiddleware::require()
+        // already blocks non-approved users, but still a confusing 200
+        // instead of a clear rejection).
+        if ($row['approval_status'] === 'pending') {
+            Response::error(ErrorMessages::get('auth.pending_approval'), 403);
+        }
+        if ($row['approval_status'] === 'rejected') {
+            Response::error(ErrorMessages::get('auth.rejected'), 403);
+        }
+
         $user = $this->userFromRow($row);
         Response::ok([
             'token' => $this->issueToken($user),

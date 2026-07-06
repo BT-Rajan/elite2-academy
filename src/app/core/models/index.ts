@@ -19,6 +19,7 @@ export interface UserProfile {
   avatarUrl?: string;
   dojoId: string;
   branchId?: string;       // home branch for coach/staff; unset for admin (dojo-wide access)
+  approvalStatus?: 'pending' | 'approved' | 'rejected';
   createdAt: Date;
 }
 

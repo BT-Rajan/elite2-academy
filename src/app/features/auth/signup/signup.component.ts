@@ -12,7 +12,7 @@ import { UserRole } from '../../../core/models';
   imports: [CommonModule, FormsModule, RouterLink, IconComponent],
   template: `
     <div class="auth-page">
-      <div class="auth-card auth-card--lg">
+      <div class="auth-card auth-card--lg" *ngIf="!done()">
         <div class="auth-logo"><dojo-icon name="belt" [size]="28"></dojo-icon></div>
         <h1 class="auth-title">Create Account</h1>
         <p class="auth-sub">Join your dojo's platform</p>
@@ -59,6 +59,18 @@ import { UserRole } from '../../../core/models';
           <a routerLink="/auth/login">Already have an account? Sign in</a>
         </div>
       </div>
+
+      <div class="auth-card auth-card--lg" style="text-align:center" *ngIf="done()">
+        <div style="display:flex;justify-content:center;color:var(--success, #16a34a);margin-bottom:12px">
+          <dojo-icon name="check-circle" [size]="40"></dojo-icon>
+        </div>
+        <h1 class="auth-title">Account Created!</h1>
+        <p class="auth-sub" style="margin-bottom:20px">
+          Thanks{{ firstName ? ', ' + firstName : '' }} — your {{ role }} account has been submitted
+          and is pending approval. You'll be able to sign in as soon as your dojo's admin approves it.
+        </p>
+        <a routerLink="/auth/login" class="btn btn--primary btn--full btn--lg">Go to Sign In</a>
+      </div>
     </div>
   `
 })
@@ -67,6 +79,7 @@ export class SignupComponent {
   firstName = ''; lastName = ''; email = ''; password = '';
   role: UserRole = 'parent'; dojoId = '';
   loading = signal(false); error = signal('');
+  done = signal(false);
 
   async signup() {
     if (!this.email || !this.password || !this.firstName) {
@@ -79,6 +92,7 @@ export class SignupComponent {
         `${this.firstName} ${this.lastName}`.trim(),
         this.role, this.dojoId
       );
+      this.done.set(true);
     } catch (e: any) {
       this.error.set(e.message ?? 'Signup failed.');
     } finally { this.loading.set(false); }
