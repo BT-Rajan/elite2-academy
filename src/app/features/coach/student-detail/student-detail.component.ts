@@ -272,8 +272,8 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
               <div class="form-group">
                 <label>Result</label>
                 <div style="display:flex;gap:8px">
-                  <button class="btn btn--sm" [class.btn--primary]="evalResult === 'pass'" [class.btn--secondary]="evalResult !== 'pass'" (click)="evalResult = 'pass'">✓ Pass</button>
-                  <button class="btn btn--sm" [class.btn--primary]="evalResult === 'fail'" [class.btn--secondary]="evalResult !== 'fail'" (click)="evalResult = 'fail'">✗ Fail</button>
+                  <button class="btn btn--sm" [class.btn--primary]="evalResult === 'pass'" [class.btn--secondary]="evalResult !== 'pass'" (click)="evalResult = 'pass'"><dojo-icon name="check" [size]="14"></dojo-icon> Pass</button>
+                  <button class="btn btn--sm" [class.btn--primary]="evalResult === 'fail'" [class.btn--secondary]="evalResult !== 'fail'" (click)="evalResult = 'fail'"><dojo-icon name="close" [size]="14"></dojo-icon> Fail</button>
                 </div>
               </div>
               <div class="form-group">
@@ -307,8 +307,8 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
 
                     <div *ngIf="overruling()?.id === e.id" style="margin-top:8px">
                       <div style="display:flex;gap:6px;margin-bottom:6px">
-                        <button class="btn btn--sm" [class.btn--primary]="overruleResult==='pass'" [class.btn--secondary]="overruleResult!=='pass'" (click)="overruleResult='pass'">✓ Pass</button>
-                        <button class="btn btn--sm" [class.btn--primary]="overruleResult==='fail'" [class.btn--secondary]="overruleResult!=='fail'" (click)="overruleResult='fail'">✗ Fail</button>
+                        <button class="btn btn--sm" [class.btn--primary]="overruleResult==='pass'" [class.btn--secondary]="overruleResult!=='pass'" (click)="overruleResult='pass'"><dojo-icon name="check" [size]="14"></dojo-icon> Pass</button>
+                        <button class="btn btn--sm" [class.btn--primary]="overruleResult==='fail'" [class.btn--secondary]="overruleResult!=='fail'" (click)="overruleResult='fail'"><dojo-icon name="close" [size]="14"></dojo-icon> Fail</button>
                       </div>
                       <textarea class="textarea" [(ngModel)]="overruleNotes" rows="2" placeholder="Reason for overruling (required)…"></textarea>
                       <button class="btn btn--danger btn--sm mt-2" [disabled]="!overruleNotes.trim()" (click)="submitOverrule(e)">Confirm Overrule</button>

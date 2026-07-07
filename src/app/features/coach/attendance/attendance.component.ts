@@ -171,10 +171,10 @@ export class AttendanceComponent implements OnInit {
   private statusMap = signal<Record<string, AttendanceStatus>>({});
 
   readonly statusOpts = [
-    { value: 'present' as AttendanceStatus, label: '✓ Present' },
-    { value: 'late'    as AttendanceStatus, label: '⏱ Late' },
-    { value: 'excused' as AttendanceStatus, label: '📋 Excused' },
-    { value: 'absent'  as AttendanceStatus, label: '✗ Absent' },
+    { value: 'present' as AttendanceStatus, label: 'Present' },
+    { value: 'late'    as AttendanceStatus, label: 'Late' },
+    { value: 'excused' as AttendanceStatus, label: 'Excused' },
+    { value: 'absent'  as AttendanceStatus, label: 'Absent' },
   ];
 
   newSession = { className: '', date: new Date().toISOString().split('T')[0],

@@ -14,6 +14,7 @@ import {
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { BadgeComponent } from '../../shared/components/badge/badge.component';
+import { IconComponent } from '../../shared/components/icon/icon.component';
 
 type Tab = 'compose' | 'templates' | 'history' | 'campaigns' | 'providers';
 
@@ -29,16 +30,21 @@ interface TemplateFormState {
 @Component({
   selector: 'app-communication-center',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe, PageHeaderComponent, EmptyStateComponent, BadgeComponent],
+  imports: [CommonModule, FormsModule, DatePipe, PageHeaderComponent, EmptyStateComponent, BadgeComponent, IconComponent],
   template: `
     <dojo-page-header title="Communication Center" subtitle="Send WhatsApp, SMS & Email across every event, manage templates, and review send history"></dojo-page-header>
 
     <div class="tabs mb-6">
-      <button class="tab-btn" [class.active]="tab() === 'compose'" (click)="tab.set('compose')">✉️ Compose &amp; Send</button>
-      <button class="tab-btn" *ngIf="canManageTemplates()" [class.active]="tab() === 'templates'" (click)="tab.set('templates')">📄 Templates</button>
-      <button class="tab-btn" [class.active]="tab() === 'history'" (click)="tab.set('history')">🕐 History</button>
-      <button class="tab-btn" *ngIf="canManageCampaigns()" [class.active]="tab() === 'campaigns'" (click)="tab.set('campaigns')">📣 Campaigns</button>
-      <button class="tab-btn" *ngIf="canManageProviders()" [class.active]="tab() === 'providers'" (click)="tab.set('providers')">🔌 Providers</button>
+      <button class="tab-btn" [class.active]="tab() === 'compose'" (click)="tab.set('compose')">
+        <dojo-icon name="message" [size]="14"></dojo-icon> Compose &amp; Send</button>
+      <button class="tab-btn" *ngIf="canManageTemplates()" [class.active]="tab() === 'templates'" (click)="tab.set('templates')">
+        <dojo-icon name="clipboard" [size]="14"></dojo-icon> Templates</button>
+      <button class="tab-btn" [class.active]="tab() === 'history'" (click)="tab.set('history')">
+        <dojo-icon name="inbox" [size]="14"></dojo-icon> History</button>
+      <button class="tab-btn" *ngIf="canManageCampaigns()" [class.active]="tab() === 'campaigns'" (click)="tab.set('campaigns')">
+        <dojo-icon name="target" [size]="14"></dojo-icon> Campaigns</button>
+      <button class="tab-btn" *ngIf="canManageProviders()" [class.active]="tab() === 'providers'" (click)="tab.set('providers')">
+        <dojo-icon name="settings" [size]="14"></dojo-icon> Providers</button>
     </div>
 
     <!-- ══════════════════════════ COMPOSE & SEND ══════════════════════════ -->
@@ -117,13 +123,20 @@ interface TemplateFormState {
             </div>
 
             <button class="btn btn--primary btn--full" [disabled]="sending() || !canSubmitCompose()" (click)="submitSend()">
-              {{ sending() ? 'Sending…' : '✉️ Send' }}
+              <dojo-icon *ngIf="!sending()" name="message" [size]="14"></dojo-icon>
+              {{ sending() ? 'Sending…' : 'Send' }}
             </button>
 
-            <div *ngIf="lastResult() as r" class="mt-4" style="padding:12px;border-radius:8px"
-              [style.background]="r.status === 'sent' ? 'var(--success-bg, #dcfce7)' : 'var(--danger-bg, #fee2e2)'">
-              <strong>{{ r.status === 'sent' ? '✓ Sent' : '✕ Failed' }}</strong>
-              <div *ngIf="r.error" style="font-size:13px;margin-top:4px">{{ r.error }}</div>
+            <div *ngIf="lastResult() as r" class="mt-4"
+              style="padding:12px;border-radius:8px;border:1px solid"
+              [style.background]="r.status === 'sent' ? 'rgba(63,143,92,.12)' : 'rgba(180,67,59,.12)'"
+              [style.border-color]="r.status === 'sent' ? 'var(--success)' : 'var(--danger)'"
+              [style.color]="r.status === 'sent' ? 'var(--success)' : 'var(--danger)'">
+              <strong style="display:inline-flex;align-items:center;gap:6px">
+                <dojo-icon [name]="r.status === 'sent' ? 'check' : 'close'" [size]="14"></dojo-icon>
+                {{ r.status === 'sent' ? 'Sent' : 'Failed' }}
+              </strong>
+              <div *ngIf="r.error" style="font-size:13px;margin-top:4px;color:var(--text)">{{ r.error }}</div>
             </div>
           </ng-container>
         </div>
@@ -367,7 +380,8 @@ interface TemplateFormState {
     .tabs     { display:flex; gap:4px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
     .tab-btn  { padding:8px 16px; font-size:13px; font-weight:500; border:none; background:none;
                 color:var(--text-muted); cursor:pointer; border-bottom:2px solid transparent;
-                margin-bottom:-1px; transition:color .15s,border-color .15s; }
+                margin-bottom:-1px; transition:color .15s,border-color .15s;
+                display:inline-flex; align-items:center; gap:6px; }
     .tab-btn:hover  { color:var(--text); }
     .tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
   `]

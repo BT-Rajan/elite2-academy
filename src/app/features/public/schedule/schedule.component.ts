@@ -48,7 +48,7 @@ const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             </select>
           </div>
           <button class="btn btn--ghost btn--sm" (click)="filterDay=''; filterDisc=''">
-            ✕ Clear filters
+            <dojo-icon name="close" [size]="14"></dojo-icon> Clear filters
           </button>
           <span class="text-muted text-sm" style="margin-left:auto">
             {{ filtered(allClasses()).length }} class(es) shown
@@ -115,7 +115,7 @@ const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
               {{ days[selected()!.dayOfWeek] }} · {{ selected()!.startTime }} – {{ selected()!.endTime }}
             </div>
           </div>
-          <button class="btn btn--ghost btn--sm" (click)="selected.set(null)">✕</button>
+          <button class="btn btn--ghost btn--sm" (click)="selected.set(null)"><dojo-icon name="close" [size]="14"></dojo-icon></button>
         </div>
         <div class="form-grid form-grid--2" style="gap:12px;margin-bottom:20px">
           <div>

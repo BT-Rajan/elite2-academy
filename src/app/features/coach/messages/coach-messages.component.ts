@@ -11,12 +11,13 @@ import { AvatarComponent } from '../../../shared/components/avatar/avatar.compon
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
 import { ToastService } from '../../../core/services/toast.service';
+import { IconComponent } from '../../../shared/components/icon/icon.component';
 
 @Component({
   selector: 'app-coach-messages',
   standalone: true,
   imports: [CommonModule, AsyncPipe, DatePipe, FormsModule,
-            PageHeaderComponent, AvatarComponent, EmptyStateComponent, TimeAgoPipe],
+            PageHeaderComponent, AvatarComponent, EmptyStateComponent, TimeAgoPipe, IconComponent],
   template: `
     <dojo-page-header title="Messages" subtitle="Parent–coach communication"></dojo-page-header>
 
@@ -38,7 +39,7 @@ import { ToastService } from '../../../core/services/toast.service';
           </select>
           <div style="display:flex;gap:6px">
             <button class="btn btn--primary btn--sm btn--full" (click)="createThread()">Start</button>
-            <button class="btn btn--secondary btn--sm" (click)="showNewThread.set(false)">✕</button>
+            <button class="btn btn--secondary btn--sm" (click)="showNewThread.set(false)"><dojo-icon name="close" [size]="14"></dojo-icon></button>
           </div>
         </div>
 

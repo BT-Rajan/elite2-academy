@@ -96,7 +96,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
     <div *ngIf="selectedDisc() as disc" class="card mt-4" style="max-width:520px">
       <div class="card__header">
         <span class="card__title">Add Belt — {{ disc.name }}</span>
-        <button class="btn btn--ghost btn--sm" (click)="selectedDisc.set(null)">✕</button>
+        <button class="btn btn--ghost btn--sm" (click)="selectedDisc.set(null)"><dojo-icon name="close" [size]="14"></dojo-icon></button>
       </div>
       <div class="card__body">
         <div class="form-grid form-grid--2">

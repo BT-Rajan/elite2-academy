@@ -20,7 +20,7 @@ import { calcAge } from '../../../core/utils';
     <dojo-page-header title="Students" subtitle="Roster directory"></dojo-page-header>
 
     <div class="card mb-4" style="padding:12px 16px">
-      <input class="input" [(ngModel)]="search" placeholder="🔍  Search by name or discipline…" style="max-width:360px">
+      <input class="input" [(ngModel)]="search" placeholder="Search by name or discipline…" style="max-width:360px">
     </div>
 
     <ng-container *ngIf="students$ | async as all; else loadingTpl">

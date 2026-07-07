@@ -43,7 +43,7 @@ type View = 'coaches' | 'staff' | 'parents' | 'invite';
     <!-- Coaches -->
     <ng-container *ngIf="activeView() === 'coaches'">
       <div class="card mb-4" style="padding:12px 16px">
-        <input class="input" [(ngModel)]="search" placeholder="🔍 Search coaches…" style="max-width:320px">
+        <input class="input" [(ngModel)]="search" placeholder="Search coaches…" style="max-width:320px">
       </div>
       <div class="card">
         <div *ngIf="coaches$ | async as coaches">
@@ -114,7 +114,8 @@ type View = 'coaches' | 'staff' | 'parents' | 'invite';
             </div>
             <button class="btn btn--sm" [class.btn--primary]="coach.isHeadCoach" [class.btn--secondary]="!coach.isHeadCoach"
               (click)="toggleHeadCoach(coach)">
-              {{ coach.isHeadCoach ? '✓ Head Coach' : 'Make Head Coach' }}
+              <dojo-icon *ngIf="coach.isHeadCoach" name="check" [size]="14"></dojo-icon>
+              {{ coach.isHeadCoach ? 'Head Coach' : 'Make Head Coach' }}
             </button>
           </div>
 
@@ -139,7 +140,7 @@ type View = 'coaches' | 'staff' | 'parents' | 'invite';
     <!-- Staff -->
     <ng-container *ngIf="activeView() === 'staff'">
       <div class="card mb-4" style="padding:12px 16px">
-        <input class="input" [(ngModel)]="search" placeholder="🔍 Search staff…" style="max-width:320px">
+        <input class="input" [(ngModel)]="search" placeholder="Search staff…" style="max-width:320px">
       </div>
       <div class="card">
         <div *ngIf="staff$ | async as staff">
@@ -169,7 +170,7 @@ type View = 'coaches' | 'staff' | 'parents' | 'invite';
     <!-- Parents -->
     <ng-container *ngIf="activeView() === 'parents'">
       <div class="card mb-4" style="padding:12px 16px">
-        <input class="input" [(ngModel)]="search" placeholder="🔍 Search parents…" style="max-width:320px">
+        <input class="input" [(ngModel)]="search" placeholder="Search parents…" style="max-width:320px">
       </div>
       <div class="card">
         <div *ngIf="parents$ | async as parents">
