@@ -9,7 +9,7 @@ import { AttendanceService } from '../../../core/services/attendance.service';
 import { BeltService } from '../../../core/services/belt.service';
 import { EvaluationService } from '../../../core/services/evaluation.service';
 import { Student, SessionComment, AttendanceRecord, BeltHistory, StudentObjective, Belt, PromotionReadiness } from '../../../core/models';
-import { SKILL_KEYS, SKILL_LABELS, calcAge } from '../../../core/utils';
+import { SKILL_KEYS, SKILL_LABELS, ATTENDANCE_LABELS, calcAge } from '../../../core/utils';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { SkillBarComponent } from '../../../shared/components/skill-bar/skill-bar.component';
@@ -91,7 +91,7 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
                 </div>
                 <ng-container *ngIf="hasAnySkill(ls)">
                   <dojo-skill-bar *ngFor="let k of skillKeys"
-                    [label]="skillLabels[k]" [score]="getScore(ls, k)" color="#6366f1">
+                    [label]="skillLabels[k]" [score]="getScore(ls, k)" color="var(--accent)">
                   </dojo-skill-bar>
                   <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
                     <span class="text-muted">Overall: </span>
@@ -143,7 +143,7 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
               </div>
               <div *ngFor="let k of skillKeys">
                 <dojo-skill-bar *ngIf="getScore(c.skills, k) > 0"
-                  [label]="skillLabels[k]" [score]="getScore(c.skills, k)" color="#6366f1">
+                  [label]="skillLabels[k]" [score]="getScore(c.skills, k)" color="var(--accent)">
                 </dojo-skill-bar>
               </div>
               <div *ngIf="c.comment" style="margin-top:8px;font-size:13px;color:var(--text-muted);font-style:italic">
@@ -341,10 +341,7 @@ export class ChildProgressComponent implements OnInit {
   skillLabels = SKILL_LABELS;
   age = (s: Student) => s.dob ? calcAge(new Date(s.dob)) : '—';
 
-  attLegend = [
-    { label: 'Present', color: '#22c55e' }, { label: 'Late',    color: '#f59e0b' },
-    { label: 'Excused', color: '#3b82f6' }, { label: 'Absent',  color: '#ef4444' },
-  ];
+  attLegend = Object.values(ATTENDANCE_LABELS);
 
   tabs: { key: Tab; icon: IconName; label: string }[] = [
     { key: 'overview'   as Tab, icon: 'home',       label: 'Overview' },
@@ -412,19 +409,15 @@ export class ChildProgressComponent implements OnInit {
   attStats(r: AttendanceRecord[]) {
     const c = { present: 0, late: 0, excused: 0, absent: 0 };
     r.forEach(x => c[x.status]++);
-    return [
-      { label: 'Present', count: c.present, color: '#22c55e' },
-      { label: 'Late',    count: c.late,    color: '#f59e0b' },
-      { label: 'Excused', count: c.excused, color: '#3b82f6' },
-      { label: 'Absent',  count: c.absent,  color: '#ef4444' },
-    ];
+    return (Object.keys(c) as (keyof typeof c)[]).map(status => ({
+      label: ATTENDANCE_LABELS[status].label,
+      count: c[status],
+      color: ATTENDANCE_LABELS[status].color,
+    }));
   }
 
   attColor(status: string): string {
-    const map: Record<string, string> = {
-      present: '#22c55e22', late: '#f59e0b22', excused: '#3b82f622', absent: '#ef444422',
-    };
-    return map[status] ?? '#ffffff11';
+    return (ATTENDANCE_LABELS[status]?.color ?? '#ffffff') + '22';
   }
 
   calcAttPct(r: AttendanceRecord[]): number {

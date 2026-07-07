@@ -30,13 +30,13 @@ export class PricingComponent {
   }
 
   plans: Plan[] = [
-    { id: 'starter', name: 'Starter', price: 29, color: '#22c55e', highlighted: false,
+    { id: 'starter', name: 'Starter', price: 29, color: 'var(--success)', highlighted: false,
       features: ['Up to 30 students','Attendance tracking','Basic skill scoring',
                  'Parent portal access','Belt progression','Email support'] },
-    { id: 'growth', name: 'Growth', price: 59, color: '#6366f1', highlighted: true, badge: 'Most popular',
+    { id: 'growth', name: 'Growth', price: 59, color: 'var(--accent)', highlighted: true, badge: 'Most popular',
       features: ['Up to 100 students','Everything in Starter','Full loyalty program',
                  'Advanced reports','Bulk notifications','Priority support'] },
-    { id: 'pro', name: 'Pro', price: 99, color: '#f59e0b', highlighted: false,
+    { id: 'pro', name: 'Pro', price: 99, color: 'var(--warning)', highlighted: false,
       features: ['Unlimited students','Everything in Growth','Multi-location support',
                  'Custom belt colours','API access','Dedicated support'] },
   ];

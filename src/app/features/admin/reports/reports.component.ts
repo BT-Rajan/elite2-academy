@@ -231,7 +231,7 @@ export class ReportsComponent implements OnInit {
     const max = Math.max(...map.values(), 1);
     return Array.from(map.entries()).map(([belt, count]) => ({
       belt, count, pct: Math.round(count / max * 100),
-      color: belt === 'No belt' ? '#64748b' : '#6366f1',
+      color: belt === 'No belt' ? 'var(--text-dim)' : 'var(--accent)',
     }));
   }
 

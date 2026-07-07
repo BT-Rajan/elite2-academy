@@ -160,7 +160,7 @@ export class DisciplinesComponent implements OnInit {
   discError    = signal('');
   beltError    = signal('');
 
-  newDisc = { name: '', color: '#3b82f6', description: '' };
+  newDisc = { name: '', color: '#4a7a9c', description: '' };
   newBelt = {
     name: '', colorHex: '#ffffff', sortOrder: 1, minClasses: 10, minScore: 5,
     kickboxingLevel: '', bjjStripeLabel: '', seminarPointsRequired: 0,
@@ -192,7 +192,7 @@ export class DisciplinesComponent implements OnInit {
         color: this.newDisc.color,
         description: this.newDisc.description,
       });
-      this.newDisc = { name: '', color: '#3b82f6', description: '' };
+      this.newDisc = { name: '', color: '#4a7a9c', description: '' };
       this.showAddDisc.set(false);
       this.disciplines$ = this.ds.byDojo$(this.auth.currentUser()!.dojoId);
       this.toast.success('Discipline added.');

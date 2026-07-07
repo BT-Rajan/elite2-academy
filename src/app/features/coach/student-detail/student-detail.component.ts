@@ -10,7 +10,7 @@ import { BeltService } from '../../../core/services/belt.service';
 import { EvaluationService } from '../../../core/services/evaluation.service';
 import { Student, SessionComment, AttendanceRecord, BeltHistory, StudentObjective,
          Belt, PromotionReadiness, StudentEvaluation, CurriculumTrack } from '../../../core/models';
-import { SKILL_KEYS, SKILL_LABELS, calcAge } from '../../../core/utils';
+import { SKILL_KEYS, SKILL_LABELS, ATTENDANCE_LABELS, calcAge } from '../../../core/utils';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { SkillBarComponent } from '../../../shared/components/skill-bar/skill-bar.component';
@@ -102,7 +102,7 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
               <dojo-skill-bar *ngFor="let k of skillKeys"
                 [label]="skillLabels[k]"
                 [score]="currentSkills()[k] ?? 0"
-                color="#6366f1">
+                color="var(--accent)">
               </dojo-skill-bar>
               <div *ngIf="avgScore() > 0" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
                 <span class="text-muted">Overall average: </span>
@@ -560,12 +560,11 @@ export class StudentDetailComponent implements OnInit {
   attendanceStats(records: AttendanceRecord[]) {
     const counts = { present: 0, late: 0, excused: 0, absent: 0 };
     records.forEach(r => counts[r.status]++);
-    return [
-      { label: 'Present', count: counts.present, color: '#22c55e' },
-      { label: 'Late',    count: counts.late,    color: '#f59e0b' },
-      { label: 'Excused', count: counts.excused, color: '#3b82f6' },
-      { label: 'Absent',  count: counts.absent,  color: '#ef4444' },
-    ];
+    return (Object.keys(counts) as (keyof typeof counts)[]).map(status => ({
+      label: ATTENDANCE_LABELS[status].label,
+      count: counts[status],
+      color: ATTENDANCE_LABELS[status].color,
+    }));
   }
 
   getSkillScore(c: SessionComment, k: string): number | undefined {

@@ -25,5 +25,5 @@ import { CommonModule } from '@angular/common';
 export class SkillBarComponent {
   @Input() label = '';
   @Input() score = 0;
-  @Input() color = '#3b82f6';
+  @Input() color = 'var(--info)';
 }

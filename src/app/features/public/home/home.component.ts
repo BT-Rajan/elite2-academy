@@ -324,17 +324,17 @@ export class HomeComponent {
 
   portals: { icon: IconName; role: string; color: string; tagline: string; features: string[] }[] = [
     {
-      icon: 'settings', role: 'Admin', color: '#6366f1',
+      icon: 'settings', role: 'Admin', color: 'var(--accent)',
       tagline: 'Run the business',
       features: ['Staff & member management', 'Disciplines & belt config', 'Business analytics & reports', 'Loyalty program settings', 'Notification preferences'],
     },
     {
-      icon: 'users', role: 'Coach', color: '#22c55e',
+      icon: 'users', role: 'Coach', color: 'var(--success)',
       tagline: 'Guide students',
       features: ['Take class attendance', 'Score 9 student skills', 'Write session comments', 'Award belt promotions', 'Message parents directly'],
     },
     {
-      icon: 'child', role: 'Parent', color: '#f59e0b',
+      icon: 'child', role: 'Parent', color: 'var(--warning)',
       tagline: 'Track progress',
       features: ['View child\'s skill progress', 'See attendance history', 'Read coach comments', 'Track belt journey', 'Earn & redeem loyalty points'],
     },

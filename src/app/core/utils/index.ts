@@ -21,10 +21,10 @@ export const BELT_COLORS: Record<string, string> = {
 };
 
 export const ATTENDANCE_LABELS: Record<string, { label: string; color: string }> = {
-  present: { label: 'Present',  color: '#22c55e' },
-  late:    { label: 'Late',     color: '#f59e0b' },
-  excused: { label: 'Excused',  color: '#3b82f6' },
-  absent:  { label: 'Absent',   color: '#ef4444' },
+  present: { label: 'Present',  color: '#3f8f5c' },
+  late:    { label: 'Late',     color: '#c17a2b' },
+  excused: { label: 'Excused',  color: '#4a7a9c' },
+  absent:  { label: 'Absent',   color: '#b4433b' },
 };
 
 export const LOYALTY_TIER_COLORS: Record<string, string> = {
