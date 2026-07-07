@@ -19,7 +19,6 @@ export interface UserProfile {
   avatarUrl?: string;
   dojoId: string;
   branchId?: string;       // home branch for coach/staff; unset for admin (dojo-wide access)
-  approvalStatus?: 'pending' | 'approved' | 'rejected';
   createdAt: Date;
 }
 
@@ -73,6 +72,31 @@ export interface Student {
   beltName?: string;
   colorHex?: string;
   disciplineName?: string;
+  branchName?: string;
+}
+
+export interface StudentBranchTransfer {
+  id: string;
+  studentId: string;
+  fromBranchId: string | null;
+  toBranchId: string;
+  fromBranchName?: string;
+  toBranchName?: string;
+  transferredBy: string;
+  notes?: string;
+  transferredAt: Date;
+}
+
+export interface BranchProgram {
+  id: string;
+  name: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  location?: string;
+  disciplineId?: string;
+  disciplineName?: string;
+  disciplineColor?: string;
 }
 
 export interface Discipline {
@@ -307,6 +331,7 @@ export interface Branch {
   phone?: string;
   isActive: boolean;
   createdAt: Date;
+  coachCount?: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

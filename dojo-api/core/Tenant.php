@@ -67,10 +67,11 @@ class Tenant {
 
     public static function student(PDO $db, array $auth, int $studentId): array {
         $stmt = $db->prepare("
-            SELECT s.*, b.name AS belt_name, b.color_hex, d.name AS discipline_name
+            SELECT s.*, b.name AS belt_name, b.color_hex, d.name AS discipline_name, br.name AS branch_name
             FROM students s
             LEFT JOIN belts b       ON b.id = s.current_belt_id
             LEFT JOIN disciplines d ON d.id = s.discipline_id
+            LEFT JOIN branches br   ON br.id = s.branch_id
             WHERE s.id = ? AND s.dojo_id = ?");
         $stmt->execute([$studentId, self::dojoId($auth)]);
         $row = $stmt->fetch();

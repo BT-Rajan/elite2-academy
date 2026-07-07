@@ -9,6 +9,7 @@ const NAV: { path: string; icon: IconName; label: string }[] = [
   { path: '/admin/dashboard', icon: 'home', label: 'Dashboard' },
   { path: '/admin/staff',     icon: 'users', label: 'Staff' },
   { path: '/admin/approvals', icon: 'check-circle', label: 'Approvals' },
+  { path: '/admin/branches',  icon: 'pin', label: 'Branches' },
   { path: '/admin/students',  icon: 'child', label: 'Students' },
   { path: '/admin/disciplines',icon: 'belt', label: 'Disciplines' },
   { path: '/admin/reports',   icon: 'chart', label: 'Reports' },

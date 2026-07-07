@@ -9,7 +9,8 @@ import { AttendanceService } from '../../../core/services/attendance.service';
 import { BeltService } from '../../../core/services/belt.service';
 import { EvaluationService } from '../../../core/services/evaluation.service';
 import { Student, SessionComment, AttendanceRecord, BeltHistory, StudentObjective,
-         Belt, PromotionReadiness, StudentEvaluation, CurriculumTrack } from '../../../core/models';
+         Belt, PromotionReadiness, StudentEvaluation, CurriculumTrack,
+         Branch, StudentBranchTransfer } from '../../../core/models';
 import { SKILL_KEYS, SKILL_LABELS, ATTENDANCE_LABELS, calcAge } from '../../../core/utils';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
@@ -19,6 +20,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
 import { RoadmapComponent } from '../../../shared/components/roadmap/roadmap.component';
 import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
 import { ToastService } from '../../../core/services/toast.service';
+import { BranchService } from '../../../core/services/branch.service';
 import { IconComponent, IconName } from '../../../shared/components/icon/icon.component';
 
 type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments';
@@ -83,6 +85,55 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
                   <button class="btn btn--primary btn--sm" (click)="addObjective(s.id)">Add</button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mt-4" *ngIf="isAdmin()">
+          <div class="card__header">
+            <span class="card__title">Branch</span>
+            <button class="btn btn--secondary btn--sm" (click)="startTransfer(s)">
+              <dojo-icon name="refresh" [size]="13"></dojo-icon> Transfer
+            </button>
+          </div>
+          <div class="card__body" style="display:flex;align-items:center;gap:8px">
+            <dojo-icon name="pin" [size]="15"></dojo-icon>
+            <span style="font-size:14px;font-weight:600">{{ s.branchName || 'No branch assigned' }}</span>
+          </div>
+          <div *ngIf="transferHistory$ | async as history">
+            <div *ngFor="let t of history | slice:0:5"
+                 style="padding:10px 16px;border-top:1px solid var(--border);font-size:12px" class="text-muted">
+              {{ t.fromBranchName || 'Unassigned' }} → {{ t.toBranchName }} · {{ t.transferredAt | timeAgo }}
+              <span *ngIf="t.notes"> — {{ t.notes }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Transfer modal -->
+        <div class="confirm-overlay" *ngIf="transferTarget()" (click)="cancelTransfer()">
+          <div class="confirm-card" (click)="$event.stopPropagation()">
+            <div class="confirm-title">Transfer {{ s.firstName }} {{ s.lastName }}</div>
+            <div class="confirm-message">Move this student to a different branch. This is logged in their transfer history.</div>
+            <div class="form-group">
+              <label>Destination branch</label>
+              <select class="input" [(ngModel)]="transferBranchId">
+                <option [ngValue]="null" disabled>Select a branch…</option>
+                <option *ngFor="let b of branches()" [ngValue]="b.id" [disabled]="b.id === s.branchId">
+                  {{ b.name }}{{ b.id === s.branchId ? ' (current)' : '' }}
+                </option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Notes <span class="text-muted text-sm">(optional)</span></label>
+              <input class="input" [(ngModel)]="transferNotes" placeholder="Reason for transfer…">
+            </div>
+            <div class="form-error" *ngIf="transferError()">{{ transferError() }}</div>
+            <div class="confirm-actions">
+              <button class="btn btn--secondary" (click)="cancelTransfer()">Cancel</button>
+              <button class="btn btn--primary" [disabled]="transferBusy() || !transferBranchId"
+                      (click)="confirmTransfer(s)">
+                {{ transferBusy() ? 'Transferring…' : 'Transfer' }}
+              </button>
             </div>
           </div>
         </div>
@@ -370,6 +421,18 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
     </ng-container>
   `,
   styles: [`
+    .confirm-overlay {
+      position: fixed; inset: 0; z-index: 2000; background: rgba(0,0,0,.5);
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .confirm-card {
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
+      max-width: 420px; width: 100%; padding: 24px;
+    }
+    .confirm-title { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+    .confirm-message { font-size: 13px; line-height: 1.6; color: var(--text-muted); margin-bottom: 16px; }
+    .confirm-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
     .tabs { display:flex; gap:4px; border-bottom:1px solid var(--border); padding-bottom:0; }
     .tab-btn {
       padding:8px 14px; font-size:13px; font-weight:500; border:none; background:none;
@@ -391,6 +454,7 @@ export class StudentDetailComponent implements OnInit {
   private bs      = inject(BeltService);
   private es      = inject(EvaluationService);
   private toast   = inject(ToastService);
+  private brs     = inject(BranchService);
 
   student$!:    Observable<Student | undefined>;
   comments$!:   Observable<SessionComment[]>;
@@ -400,6 +464,13 @@ export class StudentDetailComponent implements OnInit {
   roadmap$!:    Observable<Belt[]>;
   readiness$!:  Observable<PromotionReadiness>;
   evaluations$!:Observable<StudentEvaluation[]>;
+  transferHistory$!: Observable<StudentBranchTransfer[]>;
+  branches = signal<Branch[]>([]);
+  transferTarget  = signal<Student | null>(null);
+  transferBranchId: string | null = null;
+  transferNotes = '';
+  transferBusy  = signal(false);
+  transferError = signal('');
 
   trackOrder: CurriculumTrack[] = ['striking', 'grappling', 'selfdefense'];
   trackLabel: Record<CurriculumTrack, string> = { striking: 'Striking', grappling: 'Grappling', selfdefense: 'Self-Defense' };
@@ -458,6 +529,10 @@ export class StudentDetailComponent implements OnInit {
       this.beltHistory$  = this.bs.history$(sid);
       this.objectives$   = this.bs.objectives$(sid);
       this.refreshEvaluationState(sid);
+      if (this.isAdmin()) {
+        this.transferHistory$ = this.brs.transferHistory$(sid);
+        this.brs.list$().subscribe({ next: list => this.branches.set(list), error: () => {} });
+      }
     });
     this.student$.subscribe(s => {
       if (s?.disciplineId) this.roadmap$ = this.bs.roadmap$(s.disciplineId);
@@ -467,6 +542,42 @@ export class StudentDetailComponent implements OnInit {
   private refreshEvaluationState(studentId: string) {
     this.readiness$   = this.es.readiness$(studentId);
     this.evaluations$ = this.es.evaluations$(studentId);
+  }
+
+  // Only Admin can transfer a student between branches (see
+  // AuthMiddleware::requireTransferPermission on the backend) -- coaches
+  // don't get this control since it would just 403 for them. Staff have
+  // their own transfer action on the Staff > Students page.
+  isAdmin(): boolean {
+    return this.auth.currentUser()?.role === 'admin';
+  }
+
+  startTransfer(s: Student): void {
+    this.transferTarget.set(s);
+    this.transferBranchId = null;
+    this.transferNotes = '';
+    this.transferError.set('');
+  }
+
+  cancelTransfer(): void {
+    this.transferTarget.set(null);
+  }
+
+  async confirmTransfer(s: Student): Promise<void> {
+    if (!this.transferBranchId) return;
+    this.transferBusy.set(true);
+    this.transferError.set('');
+    try {
+      await this.brs.transferStudent(s.id, this.transferBranchId, undefined, this.transferNotes || undefined);
+      this.toast.success(`${s.firstName} transferred.`);
+      this.transferTarget.set(null);
+      this.student$ = this.route.params.pipe(switchMap(p => this.sts.get$(p['id'])));
+      this.transferHistory$ = this.brs.transferHistory$(s.id);
+    } catch (e: any) {
+      this.transferError.set(e.message ?? 'Could not transfer this student.');
+    } finally {
+      this.transferBusy.set(false);
+    }
   }
 
   avgScore(): number {

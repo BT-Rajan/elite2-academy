@@ -34,10 +34,11 @@ class StudentController {
             $branchId = Tenant::branchId($auth);
         }
 
-        $sql    = "SELECT s.*, b.name AS belt_name, b.color_hex, d.name AS discipline_name
+        $sql    = "SELECT s.*, b.name AS belt_name, b.color_hex, d.name AS discipline_name, br.name AS branch_name
                    FROM students s
                    LEFT JOIN belts b       ON b.id = s.current_belt_id
                    LEFT JOIN disciplines d ON d.id = s.discipline_id
+                   LEFT JOIN branches br   ON br.id = s.branch_id
                    WHERE s.dojo_id = ? AND s.is_active = 1";
         $params = [Tenant::dojoId($auth)];
 

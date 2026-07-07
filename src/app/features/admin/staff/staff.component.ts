@@ -6,7 +6,8 @@ import { AuthService } from '../../../core/services/auth.service';
 import { UserService } from '../../../core/services/user.service';
 import { StudentService } from '../../../core/services/student.service';
 import { ToastService } from '../../../core/services/toast.service';
-import { UserProfile, Student } from '../../../core/models';
+import { BranchService } from '../../../core/services/branch.service';
+import { UserProfile, Student, Branch } from '../../../core/models';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { BadgeComponent } from '../../../shared/components/badge/badge.component';
@@ -109,6 +110,17 @@ type View = 'coaches' | 'staff' | 'parents' | 'invite';
 
           <div style="margin-top:16px;padding:12px 16px;background:var(--surface-2);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
             <div>
+              <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px"><dojo-icon name="pin" [size]="14"></dojo-icon> Branch</div>
+              <div class="text-muted text-sm">Which location this coach is based at.</div>
+            </div>
+            <select class="input" style="max-width:220px" [ngModel]="coach.branchId" (ngModelChange)="assignBranch(coach, $event)">
+              <option [ngValue]="null">Unassigned</option>
+              <option *ngFor="let b of branches()" [ngValue]="b.id">{{ b.name }}</option>
+            </select>
+          </div>
+
+          <div style="margin-top:16px;padding:12px 16px;background:var(--surface-2);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <div>
               <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px"><dojo-icon name="star" [size]="14"></dojo-icon> Head Coach</div>
               <div class="text-muted text-sm">Can overrule other coaches' evaluations and force promotions.</div>
             </div>
@@ -149,7 +161,7 @@ type View = 'coaches' | 'staff' | 'parents' | 'invite';
             subtitle="Invite front-desk or office staff using the button above.">
           </dojo-empty-state>
           <table *ngIf="staff.length > 0">
-            <thead><tr><th>Staff Member</th><th>Email</th><th>Joined</th></tr></thead>
+            <thead><tr><th>Staff Member</th><th>Email</th><th>Branch</th><th>Joined</th></tr></thead>
             <tbody>
               <tr *ngFor="let s of filterUsers(staff)">
                 <td>
@@ -159,6 +171,12 @@ type View = 'coaches' | 'staff' | 'parents' | 'invite';
                   </div>
                 </td>
                 <td class="text-muted">{{ s.email }}</td>
+                <td>
+                  <select class="input" style="font-size:12px;padding:6px 8px" [ngModel]="s.branchId" (ngModelChange)="assignBranch(s, $event)">
+                    <option [ngValue]="null">Unassigned</option>
+                    <option *ngFor="let b of branches()" [ngValue]="b.id">{{ b.name }}</option>
+                  </select>
+                </td>
                 <td class="text-muted">{{ s.createdAt | date:'MMM y' }}</td>
               </tr>
             </tbody>
@@ -258,6 +276,7 @@ export class StaffComponent implements OnInit {
   private us    = inject(UserService);
   private sts   = inject(StudentService);
   private toast = inject(ToastService);
+  private brs   = inject(BranchService);
 
   coaches$!: Observable<UserProfile[]>;
   staff$!: Observable<UserProfile[]>;
@@ -270,6 +289,7 @@ export class StaffComponent implements OnInit {
   inviteRole    = 'coach';
   copied        = signal(false);
   dojoId        = () => this.auth.currentUser()?.dojoId ?? '';
+  branches      = signal<Branch[]>([]);
 
   private _studentList: Student[] = [];
 
@@ -280,6 +300,7 @@ export class StaffComponent implements OnInit {
     this.parents$  = this.us.parents$(dojoId);
     this.students$ = this.sts.byDojo$(dojoId);
     this.students$.subscribe(s => this._studentList = s);
+    this.brs.list$().subscribe({ next: list => this.branches.set(list), error: () => {} });
   }
 
   async toggleHeadCoach(coach: UserProfile) {
@@ -291,6 +312,21 @@ export class StaffComponent implements OnInit {
       this.toast.success(coach.isHeadCoach ? `${coach.displayName} is now Head Coach.` : `Head Coach designation removed.`);
     } catch (e: any) {
       this.toast.error(e.message ?? 'Could not update Head Coach status.');
+    }
+  }
+
+  async assignBranch(user: UserProfile, branchId: string | null): Promise<void> {
+    const prev = user.branchId;
+    user.branchId = branchId ?? undefined; // optimistic -- the <select> already shows the new value
+    try {
+      await this.brs.assignUserBranch(user.uid, branchId);
+      const dojoId = this.auth.currentUser()!.dojoId;
+      this.coaches$ = this.us.coaches$(dojoId);
+      this.staff$   = this.us.staff$(dojoId);
+      this.toast.success(`${user.displayName}'s branch updated.`);
+    } catch (e: any) {
+      user.branchId = prev;
+      this.toast.error(e.message ?? "Could not update this person's branch.");
     }
   }
 

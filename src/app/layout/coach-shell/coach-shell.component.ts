@@ -56,10 +56,16 @@ const NAV: { path: string; icon: IconName; label: string; badge?: number }[] = [
 export class CoachShellComponent {
   auth = inject(AuthService);
   user = computed(() => this.auth.currentUser());
-  // Only Head Coaches can approve pending admin sign-ups (see
-  // AuthMiddleware::requireHeadCoach on the backend) -- regular coaches
-  // don't get the nav item since the page would just 403 for them.
+  // Only Head Coaches can approve pending admin sign-ups and manage
+  // branches (see AuthMiddleware::requireHeadCoach on the backend) --
+  // regular coaches don't get these nav items since the pages would just
+  // 403 for them.
   nav  = computed(() => this.user()?.isHeadCoach
-    ? [...NAV.slice(0, -1), { path: '/coach/approvals', icon: 'check-circle' as IconName, label: 'Approvals' }, NAV[NAV.length - 1]]
+    ? [
+        ...NAV.slice(0, -1),
+        { path: '/coach/branches',  icon: 'pin' as IconName,          label: 'Branches' },
+        { path: '/coach/approvals', icon: 'check-circle' as IconName, label: 'Approvals' },
+        NAV[NAV.length - 1],
+      ]
     : NAV);
 }

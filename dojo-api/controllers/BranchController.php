@@ -31,7 +31,10 @@ class BranchController {
     // to view coaches/programs for in the first place.
     public function list(): never {
         $auth = AuthMiddleware::require();
-        $stmt = $this->db->prepare("SELECT * FROM branches WHERE dojo_id = ? AND is_active = 1 ORDER BY name");
+        $stmt = $this->db->prepare("
+            SELECT b.*,
+                   (SELECT COUNT(*) FROM users u WHERE u.branch_id = b.id AND u.is_active = 1) AS coach_count
+            FROM branches b WHERE b.dojo_id = ? AND b.is_active = 1 ORDER BY b.name");
         $stmt->execute([Tenant::dojoId($auth)]);
         Response::ok($stmt->fetchAll());
     }
