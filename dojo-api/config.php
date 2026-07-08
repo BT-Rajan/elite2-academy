@@ -11,6 +11,10 @@ return [
     'jwt_expiry'       => (int)Env::get('JWT_EXPIRY', '3600'),
     'mail_from'        => Env::get('MAIL_FROM', 'noreply@yourdojo.com'),
     'mail_from_name'   => Env::get('MAIL_FROM_NAME', 'Dojo Platform'),
+    'smtp_host'        => Env::get('SMTP_HOST'),
+    'smtp_port'        => (int)Env::get('SMTP_PORT', '587'),
+    'smtp_user'        => Env::get('SMTP_USER'),
+    'smtp_pass'        => Env::get('SMTP_PASS'),
     'app_url'          => Env::get('APP_URL', 'http://localhost:4200'),
     'allowed_origins'  => array_filter(array_map('trim', explode(',', Env::get('ALLOWED_ORIGINS', 'http://localhost:4200')))),
 ];
