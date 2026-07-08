@@ -120,7 +120,7 @@ const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         <div class="form-grid form-grid--2" style="gap:12px;margin-bottom:20px">
           <div>
             <div class="text-muted text-sm mb-1">Discipline</div>
-            <div style="font-weight:600">{{ selected()!.disciplineId }}</div>
+            <div style="font-weight:600">{{ discName(selected()!.disciplineId) }}</div>
           </div>
           <div *ngIf="selected()!.location">
             <div class="text-muted text-sm mb-1">Location</div>
@@ -204,6 +204,7 @@ export class PublicScheduleComponent implements OnInit {
   dayShort    = DAY_SHORT;
 
   private discColors = new Map<string, string>();
+  private discNames  = new Map<string, string>();
 
   ngOnInit() {
     // Use dojoId from query param or a default; real impl reads from route/env
@@ -211,7 +212,7 @@ export class PublicScheduleComponent implements OnInit {
     this.ss.public$(dojoId).subscribe(c => this.allClasses.set(c));
     this.disciplines$ = this.ds.byDojo$(dojoId);
     this.disciplines$.subscribe(discs => {
-      discs.forEach(d => this.discColors.set(d.id, d.color));
+      discs.forEach(d => { this.discColors.set(d.id, d.color); this.discNames.set(d.id, d.name); });
     });
   }
 
@@ -229,5 +230,9 @@ export class PublicScheduleComponent implements OnInit {
 
   discColor(discId: string): string {
     return this.discColors.get(discId) ?? 'var(--accent)';
+  }
+
+  discName(discId: string): string {
+    return this.discNames.get(discId) ?? 'General';
   }
 }

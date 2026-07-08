@@ -27,10 +27,16 @@ const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','
           No classes
         </div>
         <table *ngIf="byDay(schedules, i).length > 0">
-          <thead><tr><th>Class</th><th>Time</th><th>Location</th><th>Status</th></tr></thead>
+          <thead><tr><th>Class</th><th>Discipline</th><th>Time</th><th>Location</th><th>Status</th></tr></thead>
           <tbody>
             <tr *ngFor="let s of byDay(schedules, i)">
               <td>{{ s.name }}</td>
+              <td>
+                <span style="display:inline-flex;align-items:center;gap:6px">
+                  <span style="width:8px;height:8px;border-radius:50%;flex-shrink:0" [style.background]="s.disciplineColor || 'var(--accent)'"></span>
+                  {{ s.disciplineName || 'General' }}
+                </span>
+              </td>
               <td class="text-muted">{{ s.startTime }} – {{ s.endTime }}</td>
               <td class="text-muted">{{ s.location }}</td>
               <td><span class="badge" [class]="s.isActive ? 'badge--success' : 'badge--gray'">

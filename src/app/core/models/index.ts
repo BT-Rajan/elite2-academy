@@ -237,6 +237,8 @@ export interface ClassSchedule {
   dojoId: string;
   name: string;
   disciplineId: string;
+  disciplineName?: string;
+  disciplineColor?: string;
   coachUid: string;
   dayOfWeek: 0 | 1 | 2 | 3 | 4 | 5 | 6;
   startTime: string;
