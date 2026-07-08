@@ -83,7 +83,7 @@ import { calcAge } from '../../../core/utils';
               </td>
               <td>{{ age(s) }}</td>
               <td>{{ s.disciplineName || '—' }}</td>
-              <td><span class="badge badge--accent">{{ s.beltName || '—' }}</span></td>
+              <td><span class="badge badge--accent" style="display:inline-flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;flex-shrink:0" [style.background]="s.colorHex || 'var(--accent)'"></span>{{ s.beltName || '—' }}</span></td>
               <td class="text-muted">{{ s.branchName || '—' }}</td>
               <td class="text-muted">{{ s.enrolledAt | date:'MMM y' }}</td>
               <td>

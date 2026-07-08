@@ -51,7 +51,7 @@ import { IconComponent } from '../../../shared/components/icon/icon.component';
               <div style="font-size:13px;font-weight:600">{{ s.firstName }} {{ s.lastName }}</div>
               <div class="text-muted text-sm">{{ s.disciplineName || 'No discipline' }}</div>
             </div>
-            <span class="badge badge--accent" style="font-size:11px">{{ s.beltName || 'No belt' }}</span>
+            <span class="badge badge--accent" style="font-size:11px;display:inline-flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;flex-shrink:0" [style.background]="s.colorHex || 'var(--accent)'"></span>{{ s.beltName || 'No belt' }}</span>
           </a>
         </div>
       </div>

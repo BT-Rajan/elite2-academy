@@ -138,7 +138,7 @@ type View = 'coaches' | 'staff' | 'parents' | 'invite';
                 style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
                 <dojo-avatar [name]="s.firstName + ' ' + s.lastName" size="xs"></dojo-avatar>
                 <div style="font-size:13px">{{ s.firstName }} {{ s.lastName }}</div>
-                <span class="badge badge--accent" style="margin-left:auto">{{ s.beltName || 'No belt' }}</span>
+                <span class="badge badge--accent" style="margin-left:auto;display:inline-flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;flex-shrink:0" [style.background]="s.colorHex || 'var(--accent)'"></span>{{ s.beltName || 'No belt' }}</span>
               </div>
               <dojo-empty-state *ngIf="coachStudents(all, coach.uid).length === 0"
                 icon="child" title="No students assigned yet" subtitle="">

@@ -38,7 +38,7 @@ import { LOYALTY_TIER_COLORS } from '../../../core/utils';
             <div>
               <div style="font-size:16px;font-weight:700">{{ s.firstName }} {{ s.lastName }}</div>
               <div class="text-muted text-sm" style="margin-top:4px">{{ s.disciplineName || 'No discipline' }}</div>
-              <div class="badge badge--accent" style="margin-top:8px">Belt: {{ s.beltName || 'No belt' }}</div>
+              <div class="badge badge--accent" style="margin-top:8px;display:inline-flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;flex-shrink:0" [style.background]="s.colorHex || 'var(--accent)'"></span>Belt: {{ s.beltName || 'No belt' }}</div>
             </div>
           </div>
         </div>

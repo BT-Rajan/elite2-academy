@@ -42,7 +42,7 @@ type Tab = 'overview' | 'skills' | 'attendance' | 'belt' | 'roadmap' | 'comments
           <div style="flex:1">
             <h2 style="font-size:22px;font-weight:700;margin-bottom:4px">{{ s.firstName }} {{ s.lastName }}</h2>
             <div class="text-muted" style="margin-bottom:8px">{{ s.disciplineName || 'No discipline' }} · Age {{ age(s) }} · Enrolled {{ s.enrolledAt | date:'MMM y' }}</div>
-            <span class="badge badge--accent" style="font-size:13px;padding:4px 12px;display:inline-flex;align-items:center;gap:4px"><dojo-icon name="belt" [size]="13"></dojo-icon> {{ s.beltName || 'No belt' }}</span>
+            <span class="badge badge--accent" style="font-size:13px;padding:4px 12px;display:inline-flex;align-items:center;gap:6px"><span style="width:9px;height:9px;border-radius:50%;flex-shrink:0" [style.background]="s.colorHex || 'var(--accent)'"></span>{{ s.beltName || 'No belt' }}</span>
           </div>
         </div>
       </div>

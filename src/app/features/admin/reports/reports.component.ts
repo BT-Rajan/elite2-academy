@@ -116,7 +116,7 @@ type ReportTab = 'overview' | 'attendance' | 'students' | 'loyalty';
             <tbody>
               <tr *ngFor="let s of students">
                 <td><strong>{{ s.firstName }} {{ s.lastName }}</strong></td>
-                <td><span class="badge badge--accent">{{ s.beltName || '—' }}</span></td>
+                <td><span class="badge badge--accent" style="display:inline-flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;flex-shrink:0" [style.background]="s.colorHex || 'var(--accent)'"></span>{{ s.beltName || '—' }}</span></td>
                 <td style="text-align:center;color:var(--success)">—</td>
                 <td style="text-align:center;color:var(--warning)">—</td>
                 <td style="text-align:center;color:var(--danger)">—</td>
@@ -145,7 +145,7 @@ type ReportTab = 'overview' | 'attendance' | 'students' | 'loyalty';
               <tr *ngFor="let s of students">
                 <td><strong>{{ s.firstName }} {{ s.lastName }}</strong></td>
                 <td class="text-muted">{{ s.disciplineName || '—' }}</td>
-                <td><span class="badge badge--accent">{{ s.beltName || 'No belt' }}</span></td>
+                <td><span class="badge badge--accent" style="display:inline-flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;flex-shrink:0" [style.background]="s.colorHex || 'var(--accent)'"></span>{{ s.beltName || 'No belt' }}</span></td>
                 <td class="text-muted">{{ s.enrolledAt | date:'MMM d, y' }}</td>
                 <td>
                   <span class="badge" [class.badge--success]="s.isActive" [class.badge--gray]="!s.isActive">
