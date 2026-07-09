@@ -142,7 +142,7 @@ class StudentController {
             $this->db->prepare("UPDATE students SET current_belt_id = ? WHERE id = ?")
                 ->execute([$b['currentBeltId'], $id]);
         }
-        $this->notify($student['parent_uid'], 'belt', "🥋 {$student['first_name']} earned a new belt!",
+        $this->notify($student['parent_uid'], 'belt', "{$student['first_name']} earned a new belt!",
             "Congratulations! {$b['beltName']} awarded by {$b['awardedBy']}.");
         Response::created(['id' => $this->db->lastInsertId()]);
     }
@@ -210,7 +210,7 @@ class StudentController {
             ->execute([(int)($b['isComplete'] ?? 0), $completedAt, $objId, $id]);
         if (!empty($b['isComplete'])) {
             $this->notify($student['parent_uid'], 'achievement',
-                "🎯 {$student['first_name']} completed an objective!", '');
+                "{$student['first_name']} completed an objective!", '');
         }
         Response::ok(['updated' => true]);
     }

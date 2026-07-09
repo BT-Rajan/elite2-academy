@@ -176,7 +176,7 @@ class EvaluationController {
 
         if ($student['parent_uid']) {
             $this->notify($student['parent_uid'], 'belt',
-                "🥋 {$student['first_name']} was promoted!",
+                "{$student['first_name']} was promoted!",
                 "Congratulations! {$student['first_name']} is now {$nextBelt['name']} belt.");
         }
 
