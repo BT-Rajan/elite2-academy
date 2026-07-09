@@ -23,6 +23,13 @@ export class LoyaltyService extends BaseHttpService<LoyaltyAccount> {
       .pipe(map(r => r.data));
   }
 
+  // Dojo-wide list, for reporting (tier distribution, etc). Admin/coach/
+  // staff only -- a plain parent can't see other families' point totals.
+  accounts$(): Observable<LoyaltyAccount[]> {
+    return this.api.get<{ data: LoyaltyAccount[] }>('/loyalty-accounts')
+      .pipe(map(r => r.data));
+  }
+
   async award(parentUid: string, dojoId: string, amount: number, reason: string, note?: string): Promise<void> {
     await this.api.post(`/loyalty/${parentUid}/award`, { dojoId, amount, reason, note }).toPromise();
   }

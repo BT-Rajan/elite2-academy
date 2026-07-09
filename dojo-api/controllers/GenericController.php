@@ -208,6 +208,21 @@ class GenericController {
         $stmt->execute([$parentUid, Tenant::dojoId($auth)]);
         Response::ok($stmt->fetch() ?: null);
     }
+    // GET /loyalty-accounts — Admin/Staff/Coach only. Dojo-wide list for
+    // reporting (tier distribution, etc.) -- the single-parent lookup
+    // above can't answer "how many families are in each tier".
+    public function listLoyaltyAccounts(): never {
+        $auth = AuthMiddleware::require();
+        AuthMiddleware::requireRole($auth, 'admin', 'coach', 'staff');
+        $stmt = $this->db->prepare("
+            SELECT la.*, u.display_name AS parent_name
+            FROM loyalty_accounts la
+            JOIN users u ON u.uid = la.parent_uid
+            WHERE la.dojo_id = ?
+            ORDER BY la.points DESC");
+        $stmt->execute([Tenant::dojoId($auth)]);
+        Response::ok($stmt->fetchAll());
+    }
     public function awardLoyalty(string $parentUid): never {
         $auth = AuthMiddleware::require();
         AuthMiddleware::requireRole($auth, 'admin', 'coach');

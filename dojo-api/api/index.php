@@ -224,6 +224,7 @@ try {
 
     // Loyalty
     $router->get('/loyalty/{uid}',              fn($uid) => (new GenericController)->getLoyalty($uid));
+    $router->get('/loyalty-accounts',           fn() => (new GenericController)->listLoyaltyAccounts());
     $router->post('/loyalty/{uid}/award',       fn($uid) => (new GenericController)->awardLoyalty($uid));
     $router->get('/loyalty/{uid}/transactions', fn($uid) => (new GenericController)->listTransactions($uid));
     $router->post('/loyalty/{uid}/redeem',      fn($uid) => (new GenericController)->redeemReward($uid));

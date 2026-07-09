@@ -230,6 +230,8 @@ export interface AttendanceRecord {
   status: AttendanceStatus;
   markedBy: string;   // coach uid
   markedAt: Date;
+  className?: string;
+  date?: string;
 }
 
 export interface ClassSchedule {
@@ -274,6 +276,8 @@ export interface MessageThread {
 
 export interface LoyaltyAccount {
   id: string;           // parentUid
+  parentUid?: string;
+  parentName?: string;
   dojoId: string;
   points: number;
   tier: 'bronze' | 'silver' | 'gold' | 'platinum';
