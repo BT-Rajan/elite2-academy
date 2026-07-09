@@ -141,7 +141,7 @@ export interface BeltHistory {
   studentId: string;
   beltId?: string;
   beltName: string;
-  awardedBy: string;   // coach uid
+  awardedBy: string;   // coach display name, e.g. "Coach Diego" (not a uid)
   awardedAt: Date;
   notes?: string;
 }
@@ -262,6 +262,8 @@ export interface MessageThread {
   id: string;
   dojoId: string;
   studentId: string;
+  studentFirst?: string;
+  studentLast?: string;
   parentUid: string;
   coachUid: string;
   lastMessage?: string;

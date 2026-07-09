@@ -49,9 +49,9 @@ import { IconComponent } from '../../../shared/components/icon/icon.component';
           <div *ngFor="let t of threads"
             class="thread-item" [class.active]="activeThread()?.id === t.id"
             (click)="openThread(t)">
-            <dojo-avatar [name]="t.studentId" size="sm"></dojo-avatar>
+            <dojo-avatar [name]="threadStudentName(t)" size="sm"></dojo-avatar>
             <div style="flex:1;min-width:0">
-              <div style="font-weight:600;font-size:13px">Student: {{ t.studentId }}</div>
+              <div style="font-weight:600;font-size:13px">{{ threadStudentName(t) }}</div>
               <div class="text-muted text-sm" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
                 {{ t.lastMessage || 'No messages yet' }}
               </div>
@@ -68,7 +68,7 @@ import { IconComponent } from '../../../shared/components/icon/icon.component';
       <div class="message-pane card">
         <ng-container *ngIf="activeThread(); else noThread">
           <div class="card__header">
-            <span class="card__title">Conversation</span>
+            <span class="card__title">{{ threadStudentName(activeThread()!) }}</span>
           </div>
           <div class="messages-scroll" #scrollRef>
             <ng-container *ngIf="messages$ | async as msgs">
@@ -147,6 +147,11 @@ export class CoachMessagesComponent implements OnInit {
     this.activeThread.set(t);
     this.messages$ = this.ms.messages$(t.id);
     this.ms.markRead(t.id, 'coach').catch(() => {});
+  }
+
+  threadStudentName(t: MessageThread): string {
+    const name = `${t.studentFirst ?? ''} ${t.studentLast ?? ''}`.trim();
+    return name || 'Unknown student';
   }
 
   async createThread() {
