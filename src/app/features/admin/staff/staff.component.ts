@@ -65,7 +65,7 @@ type View = 'coaches' | 'staff' | 'parents' | 'invite';
                 <td class="text-muted">{{ c.email }}</td>
                 <td class="text-muted">{{ c.createdAt | date:'MMM y' }}</td>
                 <td>
-                  <span class="badge badge--accent">{{ studentCount(c.uid) }} students</span>
+                  <span class="badge badge--accent">{{ studentCount(c) }} students</span>
                 </td>
                 <td>
                   <span *ngIf="c.isHeadCoach" class="badge badge--success"><dojo-icon name="star" [size]="12"></dojo-icon> Head Coach</span>
@@ -103,8 +103,8 @@ type View = 'coaches' | 'staff' | 'parents' | 'invite';
               <div style="font-weight:600">{{ coach.createdAt | date:'MMMM d, y' }}</div>
             </div>
             <div>
-              <div class="text-muted text-sm mb-1">Students assigned</div>
-              <div style="font-weight:600;color:var(--accent)">{{ studentCount(coach.uid) }}</div>
+              <div class="text-muted text-sm mb-1">Students at their branch</div>
+              <div style="font-weight:600;color:var(--accent)">{{ studentCount(coach) }}</div>
             </div>
           </div>
 
@@ -132,15 +132,15 @@ type View = 'coaches' | 'staff' | 'parents' | 'invite';
           </div>
 
           <div style="margin-top:16px">
-            <div class="text-muted text-sm mb-2">Assigned Students</div>
+            <div class="text-muted text-sm mb-2">Students at their branch</div>
             <div *ngIf="students$ | async as all">
-              <div *ngFor="let s of coachStudents(all, coach.uid)"
+              <div *ngFor="let s of coachStudents(all, coach)"
                 style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
                 <dojo-avatar [name]="s.firstName + ' ' + s.lastName" size="xs"></dojo-avatar>
                 <div style="font-size:13px">{{ s.firstName }} {{ s.lastName }}</div>
                 <span class="badge badge--accent" style="margin-left:auto;display:inline-flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;flex-shrink:0" [style.background]="s.colorHex || 'var(--accent)'"></span>{{ s.beltName || 'No belt' }}</span>
               </div>
-              <dojo-empty-state *ngIf="coachStudents(all, coach.uid).length === 0"
+              <dojo-empty-state *ngIf="coachStudents(all, coach).length === 0"
                 icon="child" title="No students assigned yet" subtitle="">
               </dojo-empty-state>
             </div>
@@ -337,12 +337,19 @@ export class StaffComponent implements OnInit {
     ) : users;
   }
 
-  studentCount(coachUid: string): number {
-    return this._studentList.length; // simplified — full impl uses coach-student mapping
+  // There's no direct coach<->student assignment in the data model --
+  // branch is the best available signal (a coach based at a branch
+  // teaches the students enrolled there). Previously this returned the
+  // dojo-wide total / first 5 students for every coach regardless of who
+  // was passed in, which was simply wrong.
+  studentCount(coach: UserProfile): number {
+    if (!coach.branchId) return 0;
+    return this._studentList.filter(s => s.branchId === coach.branchId).length;
   }
 
-  coachStudents(all: Student[], coachUid: string): Student[] {
-    return all.slice(0, 5); // simplified — real impl filters by coach assignment
+  coachStudents(all: Student[], coach: UserProfile): Student[] {
+    if (!coach.branchId) return [];
+    return all.filter(s => s.branchId === coach.branchId).slice(0, 5);
   }
 
   parentStudents(all: Student[], parentUid: string): Student[] {
